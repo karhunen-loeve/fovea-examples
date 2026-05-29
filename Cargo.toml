@@ -1,12 +1,13 @@
 [package]
-name              = "fovea-examples"
-description       = "End-to-end example programs for the fovea computer-vision crates"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-authors.workspace = true
-readme            = "README.md"
-publish           = false
+name        = "fovea-examples"
+description = "End-to-end example programs for the fovea computer-vision crates"
+version     = "0.1.1"
+edition     = "2024"
+rust-version = "1.85"
+license     = "MIT"
+authors     = ["karhunen-loeve <karhunen.loeve.mail@gmail.com>"]
+readme      = "README.md"
+publish     = false
 
 # NOTE: the dependencies below are *version*-based (against crates.io),
 # not path-based, so that this repo's public CI compiles against a real
