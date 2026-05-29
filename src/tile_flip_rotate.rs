@@ -1,7 +1,7 @@
 //! # tile_flip_rotate — per-tile axis-aligned geometric transforms
 //!
-//! Loads the cameraman test image (256 × 256, decoded as `SrgbMono8`),
-//! splits it into an `N × N` grid of square tiles, applies a different
+//! Loads the Terrace sample image (decoded as `SrgbMono8`), crops a square
+//! region, splits it into an `N × N` grid of square tiles, and applies a different
 //! axis-aligned transform from [`fovea::transform`] to each tile, writes
 //! the result into the matching tile of an output
 //! image, and finally opens two debug windows showing the original and
@@ -32,12 +32,12 @@
 use std::fs;
 
 use fovea::Rectangle;
-use fovea::image::{Image, ImageView, SubView, SubViewMut};
+use fovea::image::{Image, ImageView, RasterImage, RasterImageMut, SubView, SubViewMut};
 use fovea::pixel::SrgbMono8;
 use fovea::transform::{
     flip_h_into, flip_v_into, rotate_90_into, rotate_180_into, rotate_270_into, transpose_into,
 };
-use fovea_io::png::{self, PngImage};
+use fovea_io::jpeg::{self, JpegImage};
 
 use fovea_display::{DebugDisplay, Identity};
 
@@ -130,22 +130,31 @@ fn pattern(col: usize, row: usize) -> TileOp {
 }
 
 fn main() {
-    // ── 1. Load the cameraman PNG ────────────────────────────────────────
-    let bytes = fs::read("data/cameraman.png").expect("failed to read cameraman.png");
-    let decoded = png::decode(&bytes).expect("failed to decode PNG");
-    let PngImage::SrgbMono8(src) = decoded.image else {
+    // ── 1. Load Terrace and copy a square ROI ────────────────────────────
+    let input = concat!(env!("CARGO_MANIFEST_DIR"), "/data/Terrace.jpg");
+    let bytes = fs::read(input).expect("failed to read Terrace.jpg");
+    let decoded = jpeg::decode(&bytes).expect("failed to decode JPEG");
+    let JpegImage::SrgbMono8(src_full) = decoded.image else {
         panic!("expected SrgbMono8, got a different pixel format");
     };
 
+    let side = src_full.width().min(src_full.height());
+    let roi = src_full
+        .roi(Rectangle::new((0, 0), (side, side)))
+        .expect("square ROI in bounds");
+    let mut src = Image::<SrgbMono8>::zero(side, side);
+    for y in 0..side {
+        src.row_mut(y).copy_from_slice(roi.row(y));
+    }
+
     let (w, h) = (src.width(), src.height());
-    assert_eq!(w, h, "this example assumes a square image");
     let grid: usize = 4;
     assert!(
         w % grid == 0,
         "image side ({w}) must divide evenly by grid size ({grid})"
     );
     let tile = w / grid;
-    println!("cameraman: {w}×{h}, splitting into a {grid}×{grid} grid of {tile}×{tile} tiles");
+    println!("Terrace crop: {w}×{h}, splitting into a {grid}×{grid} grid of {tile}×{tile} tiles");
 
     // ── 2. Apply per-tile transforms ─────────────────────────────────────
     // The output starts as a black image of the same size; each tile of
@@ -166,11 +175,11 @@ fn main() {
 
     // ── 3. Display original and result side by side ──────────────────────
     println!(
-        "\nopening 'cameraman (original)' and 'cameraman (per-tile)' — press any key to close."
+        "\nopening 'Terrace crop (original)' and 'Terrace crop (per-tile)' — press any key to close."
     );
     DebugDisplay::run(move |ctx| {
-        ctx.show("cameraman (original)", &src, Identity);
-        ctx.show("cameraman (per-tile flip & rotate)", &dst, Identity);
+        ctx.show("Terrace crop (original)", &src, Identity);
+        ctx.show("Terrace crop (per-tile flip & rotate)", &dst, Identity);
         match ctx.wait_key() {
             Some(k) => println!("key pressed: {k:?}"),
             None => println!("all windows closed"),

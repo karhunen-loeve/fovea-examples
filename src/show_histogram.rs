@@ -1,9 +1,9 @@
-//! # show_histogram — display the cameraman image and a layered histogram
+//! # show_histogram — display the Terrace image and a layered histogram
 //!
-//! Loads the classic cameraman test image (8-bit grayscale PNG) and
-//! opens two debug windows:
+//! Loads the Terrace sample image (8-bit grayscale JPEG) and opens two debug
+//! windows:
 //!
-//! 1. The cameraman image itself (converted to `Srgb8` for display).
+//! 1. The Terrace image itself (converted to `Srgb8` for display).
 //! 2. A single histogram window with **two translucent layers**
 //!    overlaid in the same plot:
 //!      - linear-scale counts in blue
@@ -28,29 +28,29 @@ use fovea::analyze::histogram::{Histogram, NaturalBins, histogram};
 use fovea::image::{Image, ImageView};
 use fovea::pixel::{Srgb8, Srgba8};
 use fovea::transform::{Broadcast, ConvertPixelExt, SrgbGamma, convert_image};
-use fovea_io::png::{self, PngImage};
+use fovea_io::jpeg::{self, JpegImage};
 
 use fovea_display::{DebugDisplay, HistogramLayer, HistogramPlotOptions, Identity};
 
 fn main() {
-    let path = "data/cameraman.png";
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/data/Terrace.jpg");
     let bytes = fs::read(path).unwrap_or_else(|e| {
         eprintln!("Failed to read {path}: {e}");
         eprintln!("Run this example from the fovea-examples repository root.");
         std::process::exit(1);
     });
 
-    let decoded = png::decode(&bytes).expect("failed to decode PNG");
+    let decoded = jpeg::decode(&bytes).expect("failed to decode JPEG");
 
-    // The cameraman image is 8-bit grayscale (SrgbMono8). Its single
-    // channel is `Saturating<u8>`, which `NaturalBins` supports
-    // natively — no quantisation, one bin per intensity value.
-    let PngImage::SrgbMono8(mono) = decoded.image else {
+    // Terrace is an 8-bit grayscale JPEG (SrgbMono8). Its single channel
+    // is `Saturating<u8>`, which `NaturalBins` supports natively — no
+    // quantisation, one bin per intensity value.
+    let JpegImage::SrgbMono8(mono) = decoded.image else {
         panic!("expected SrgbMono8, got a different pixel format");
     };
 
     println!(
-        "Computing histogram of cameraman ({}×{}, SrgbMono8)…",
+        "Computing histogram of Terrace ({}×{}, SrgbMono8)…",
         mono.width(),
         mono.height(),
     );
@@ -69,7 +69,7 @@ fn main() {
         h.overflow_count,
     );
 
-    // ── Display copy of the cameraman ────────────────────────────────────────
+    // ── Display copy of Terrace ──────────────────────────────────────────────
     // SrgbMono8 → MonoF32 (linearise) → RgbF32 (broadcast) → Srgb8 (re-encode)
     // gives us a colour-space-correct displayable image for `Identity`.
     let srgb: Image<Srgb8> = convert_image(
@@ -107,7 +107,7 @@ fn main() {
     println!("Press any key in a window to exit.");
 
     DebugDisplay::run(move |ctx| {
-        ctx.show("1 — Cameraman", &srgb, Identity);
+        ctx.show("1 — Terrace", &srgb, Identity);
 
         let layers = [
             HistogramLayer::new(&layers_owned.1, Srgba8::new(255, 100, 100, 150)),

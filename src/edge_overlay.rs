@@ -1,8 +1,8 @@
-//! # edge_overlay — Sobel edge detection overlaid on the cameraman image
+//! # edge_overlay — Sobel edge detection overlaid on the Terrace image
 //!
 //! Demonstrates the convolution and pixel-wise combinator APIs working together:
 //!
-//! 1. Load the cameraman test image and linearise it to `MonoF32` with `SrgbGamma`
+//! 1. Load the Terrace sample image and linearise it to `MonoF32` with `SrgbGamma`
 //! 2. Compute Sobel gradients with `sobel_x` and `sobel_y`
 //! 3. Combine them into a gradient-magnitude image with `Magnitude`
 //! 4. Blend original and magnitude with `LinearCombine`
@@ -28,13 +28,14 @@ use fovea::transform::{
     LinearCombine, Magnitude, SrgbGamma, combine_images, convert_image, laplacian, sobel_x, sobel_y,
 };
 use fovea_display::{AutoContrast, DebugDisplay, LinearToDisplay};
-use fovea_io::png::{self, PngImage};
+use fovea_io::jpeg::{self, JpegImage};
 
 fn main() {
     // ── Load ──────────────────────────────────────────────────────────────────
-    let bytes = fs::read("data/cameraman.png").expect("failed to read cameraman.png");
-    let decoded = png::decode(&bytes).expect("failed to decode PNG");
-    let PngImage::SrgbMono8(mono) = decoded.image else {
+    let input = concat!(env!("CARGO_MANIFEST_DIR"), "/data/Terrace.jpg");
+    let bytes = fs::read(input).expect("failed to read Terrace.jpg");
+    let decoded = jpeg::decode(&bytes).expect("failed to decode JPEG");
+    let JpegImage::SrgbMono8(mono) = decoded.image else {
         panic!("expected SrgbMono8, got a different pixel format");
     };
 
@@ -69,7 +70,7 @@ fn main() {
 
     DebugDisplay::run(move |ctx| {
         // Original: [0, 1] linear light → sRGB gamma for a perceptually correct display.
-        ctx.show("1 — Cameraman (linear)", &linear, LinearToDisplay);
+        ctx.show("1 — Terrace luminance (linear)", &linear, LinearToDisplay);
 
         // Signed gradients: AutoContrast maps zero → mid-grey, ± peaks → black/white.
         ctx.show(

@@ -1,6 +1,6 @@
 //! # show_srgb — display an sRGB image with the Identity strategy
 //!
-//! Loads the cameraman test image (grayscale PNG), converts it to `Srgb8`,
+//! Loads the Terrace sample image (grayscale JPEG), converts it to `Srgb8`,
 //! and displays it in a debug window using `Identity`.
 //!
 //! ```text
@@ -14,23 +14,23 @@ use std::fs;
 use fovea::image::Image;
 use fovea::pixel::Srgb8;
 use fovea::transform::{Broadcast, ConvertPixelExt, SrgbGamma, convert_image};
-use fovea_io::png::{self, PngImage};
+use fovea_io::jpeg::{self, JpegImage};
 
 use fovea_display::{Identity, show};
 
 fn main() {
-    let path = "data/cameraman.png";
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/data/Terrace.jpg");
     let bytes = fs::read(path).unwrap_or_else(|e| {
         eprintln!("Failed to read {path}: {e}");
         eprintln!("Run this example from the fovea-examples repository root.");
         std::process::exit(1);
     });
 
-    let decoded = png::decode(&bytes).expect("failed to decode PNG");
+    let decoded = jpeg::decode(&bytes).expect("failed to decode JPEG");
 
-    // The cameraman image is 8-bit grayscale (SrgbMono8).
+    // Terrace is an 8-bit grayscale JPEG (SrgbMono8).
     // Convert: SrgbMono8 → f32 (linearise) → Srgb8 (broadcast + re-encode).
-    let PngImage::SrgbMono8(mono) = decoded.image else {
+    let JpegImage::SrgbMono8(mono) = decoded.image else {
         panic!("expected SrgbMono8, got a different pixel format");
     };
 

@@ -1,8 +1,7 @@
 //! # simple — minimal getting-started example
 //!
-//! Loads the classic cameraman test image (grayscale PNG), converts it to
-//! linear RGB, tints it by boosting the red channel, and writes the result
-//! back to disk.
+//! Loads the Terrace sample image (grayscale JPEG), converts it to linear RGB,
+//! tints it by boosting the red channel, and writes the result back to disk.
 //!
 //! ```text
 //! cargo run --bin simple
@@ -13,18 +12,20 @@ use std::fs;
 use fovea::image::{ContiguousImageMut, ImageView};
 use fovea::pixel::{MonoF32, RgbF32, Srgb8};
 use fovea::transform::{Broadcast, ConvertPixelExt, SrgbGamma, convert_image};
-use fovea_io::png::{self, PngEncodeOptions, PngImage};
+use fovea_io::jpeg::{self, JpegImage};
+use fovea_io::png::{self, PngEncodeOptions};
 
 fn main() {
-    // ── 1. Load the PNG ──────────────────────────────────────────────────
-    let bytes = fs::read("data/cameraman.png").expect("failed to read cameraman.png");
-    let decoded = png::decode(&bytes).expect("failed to decode PNG");
+    // ── 1. Load the JPEG ─────────────────────────────────────────────────
+    let input = concat!(env!("CARGO_MANIFEST_DIR"), "/data/Terrace.jpg");
+    let bytes = fs::read(input).expect("failed to read Terrace.jpg");
+    let decoded = jpeg::decode(&bytes).expect("failed to decode JPEG");
 
     // ── 2. Convert to linear RGB ─────────────────────────────────────────
-    // The cameraman image is 8-bit grayscale, which decodes as SrgbMono8.
+    // Terrace is an 8-bit grayscale JPEG, which decodes as SrgbMono8.
     // SrgbGamma linearises it to f32, then Broadcast spreads the single
     // channel into RgbF32.
-    let PngImage::SrgbMono8(mono) = decoded.image else {
+    let JpegImage::SrgbMono8(mono) = decoded.image else {
         panic!("expected SrgbMono8, got a different pixel format");
     };
 
@@ -40,10 +41,11 @@ fn main() {
     let srgb: fovea::image::Image<Srgb8> = convert_image(&linear, SrgbGamma);
     let out = png::encode(&srgb, &PngEncodeOptions::default()).expect("failed to encode PNG");
 
-    fs::write("data/cameraman_tinted.png", &out).expect("failed to write cameraman_tinted.png");
+    let output = concat!(env!("CARGO_MANIFEST_DIR"), "/data/terrace_tinted.png");
+    fs::write(output, &out).expect("failed to write terrace_tinted.png");
 
     println!(
-        "wrote cameraman_tinted.png ({}×{})",
+        "wrote terrace_tinted.png ({}×{})",
         mono.width(),
         mono.height()
     );

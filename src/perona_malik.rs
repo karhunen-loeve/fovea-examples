@@ -18,8 +18,9 @@
 //!
 //! Processing is done in **linear light** (`f32` / `RgbF32`), with sRGB gamma
 //! encoding/decoding applied around the diffusion loop.  For colour images the
-//! conductance is derived from the full RGB gradient magnitude so all three
-//! channels share a single edge map (vector Perona-Malik).
+//! conductance is derived from an RMS RGB gradient magnitude so all three
+//! channels share a single edge map while κ remains comparable to grayscale
+//! inputs (vector Perona-Malik).
 //!
 //! ## Supported pixel formats
 //!
@@ -35,12 +36,12 @@
 //! ## Quick start
 //!
 //! ```text
-//! # Default: 10 iterations, κ = 30, λ = 0.1, exponential conductance
-//! cargo run --bin perona_malik -- -i photo.jpg
+//! # Demo defaults: 15 iterations, κ = 30, λ = 0.15, rational conductance
+//! cargo run --bin perona_malik -- -i data/Mandrill.jpg
 //!
-//! # Fine-tune parameters and write to a specific file
+//! # Subtler, more edge-preserving settings and a custom output path
 //! cargo run --bin perona_malik -- \
-//!     -i photo.png -n 20 -k 15 -l 0.1 -f rat -o output/photo_smooth.png
+//!     -i photo.png -n 15 -k 20 -l 0.1 -f exp -o output/photo_smooth.png
 //! ```
 
 use std::fmt;
@@ -85,29 +86,29 @@ struct Args {
     output: Option<PathBuf>,
 
     /// Number of diffusion iterations.
-    #[arg(short = 'n', long, default_value = "10")]
+    #[arg(short = 'n', long, default_value = "15")]
     iterations: u32,
 
     /// Diffusion coefficient κ (0–255 scale).
     ///
     /// Controls edge sensitivity: low κ preserves even faint edges; high κ
-    /// allows diffusion across stronger edges.  Typical range: 5–50.
+    /// allows diffusion across stronger edges.  Typical range: 5–60.
     #[arg(short = 'k', long, default_value = "30.0")]
     kappa: f32,
 
     /// Time-step λ per iteration.
     ///
     /// Must be in (0, 0.25] for the four-neighbour scheme to remain
-    /// numerically stable.  Smaller values produce smoother results per
-    /// iteration but require more iterations for the same effect.
-    #[arg(short = 'l', long, default_value = "0.1")]
+    /// numerically stable.  Smaller values produce subtler changes per
+    /// iteration but require more iterations for the same visible effect.
+    #[arg(short = 'l', long, default_value = "0.15")]
     lambda: f32,
 
     /// Conductance function: "exp" (exponential) or "rat" (rational).
     ///
     ///   exp  g(d) = exp(-(d/κ)²)         favours high-contrast edges
     ///   rat  g(d) = 1 / (1 + (d/κ)²)    favours wide smooth regions
-    #[arg(short = 'f', long, default_value = "exp")]
+    #[arg(short = 'f', long, default_value = "rat")]
     function: String,
 }
 
@@ -195,9 +196,10 @@ fn pm_step_mono(
 
 /// One Perona-Malik iteration on a linear colour (`RgbF32`) image.
 ///
-/// Conductance is derived from the full RGB gradient magnitude so all three
+/// Conductance is derived from the RMS RGB gradient magnitude so all three
 /// channels share a single edge map — the vector extension of Perona-Malik.
-/// This avoids colour fringing that arises from per-channel conductance.
+/// RMS scaling keeps the user-facing κ parameter comparable to the mono case
+/// instead of making colour edges artificially three times stronger.
 fn pm_step_color(
     src: &Image<RgbF32>,
     lambda: f32,
@@ -218,8 +220,8 @@ fn pm_step_color(
                 let diff_r = n.pixel.r - center.r;
                 let diff_g = n.pixel.g - center.g;
                 let diff_b = n.pixel.b - center.b;
-                // Full-colour squared gradient magnitude → shared conductance.
-                let mag2 = diff_r * diff_r + diff_g * diff_g + diff_b * diff_b;
+                // RMS colour squared gradient magnitude → shared conductance.
+                let mag2 = (diff_r * diff_r + diff_g * diff_g + diff_b * diff_b) / 3.0;
                 let g = cond.eval(mag2, kappa_sq);
                 (dr + g * diff_r, dg + g * diff_g, db + g * diff_b)
             });

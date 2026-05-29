@@ -22,7 +22,7 @@ cargo build --release  # all examples, optimised
 | `resize`        | Colour-space-aware image resizer (PNG, JPEG, BMP) |
 | `edge_overlay`  | Sobel edge detection + gradient magnitude + `LinearCombine` overlay |
 | `perona_malik`  | Perona-Malik anisotropic diffusion filter CLI — PNG, JPEG, BMP       |
-| `show_srgb`     | Load a PNG and display it with `Identity` strategy |
+| `show_srgb`     | Load a JPEG and display it with `Identity` strategy |
 | `show_mono16`   | Synthetic Mono16 gradient displayed with `AutoContrast` |
 | `show_roi`      | Display a sub-region (ROI) to show `ImageView` generality |
 | `show_multi`    | Multiple windows using `DebugDisplay::run()` |
@@ -33,10 +33,10 @@ cargo build --release  # all examples, optimised
 ## `edge_overlay`
 
 Demonstrates the **convolution** and **pixel-wise combinator** APIs working
-together in a single pipeline on the classic *cameraman* test image:
+together in a single pipeline on the Terrace sample image:
 
 ```
-cameraman (SrgbMono8)
+Terrace.jpg (SrgbMono8)
   → SrgbGamma          → Image<f32>  (linear light, [0, 1])
   → sobel_x / sobel_y  → Image<f32>  (signed gradients)
   → Magnitude          → Image<f32>  (√(gx² + gy²), edge map)
@@ -88,19 +88,19 @@ I(t+1) = I(t) + λ · Σ_{n ∈ {N,S,E,W}} g(‖∇I_n‖) · (I_n − I)
 
 Processing is done in **linear light**: sRGB images are decoded to linear
 `f32`/`RgbF32` before the diffusion loop and re-encoded with sRGB gamma
-afterwards.  For colour images the conductance is derived from the full RGB
-gradient magnitude so all three channels share a single edge map
-(vector Perona-Malik).
+afterwards.  For colour images the conductance is derived from an RMS RGB
+gradient magnitude so all three channels share a single edge map while the
+κ parameter remains comparable to grayscale inputs (vector Perona-Malik).
 
 ### Quick start
 
 ```sh
-# Defaults: 10 iterations, κ = 30, λ = 0.1, exponential conductance
-cargo run --bin perona_malik -- -i data/cameraman.png
+# Demo defaults: 15 iterations, κ = 30, λ = 0.15, rational conductance
+cargo run --bin perona_malik -- -i data/Mandrill.jpg
 
-# 30 iterations, rational conductance, low κ for strong edge preservation
+# Subtler, more edge-preserving settings
 cargo run --bin perona_malik -- \
-    -i photo.jpg -n 30 -k 15 -l 0.1 -f rat -o photo_smooth.jpg
+    -i photo.jpg -n 15 -k 20 -l 0.1 -f exp -o photo_smooth.jpg
 ```
 
 ### Usage
@@ -111,10 +111,10 @@ perona_malik [OPTIONS] --input <FILE>
 Options:
   -i, --input <FILE>      Input image file (PNG, JPEG, or BMP)
   -o, --output <PATH>     Output file or directory (optional)
-  -n, --iterations <N>    Number of diffusion iterations [default: 10]
+  -n, --iterations <N>    Number of diffusion iterations [default: 15]
   -k, --kappa <FLOAT>     Diffusion coefficient κ, 0–255 scale [default: 30.0]
-  -l, --lambda <FLOAT>    Time-step λ per iteration, must be ≤ 0.25 [default: 0.1]
-  -f, --function <FN>     Conductance function: "exp" or "rat" [default: exp]
+  -l, --lambda <FLOAT>    Time-step λ per iteration, must be ≤ 0.25 [default: 0.15]
+  -f, --function <FN>     Conductance function: "exp" or "rat" [default: rat]
   -h, --help              Print help
   -V, --version           Print version
 ```
@@ -163,7 +163,7 @@ alpha, indexed) are rejected with a descriptive error message; convert to
 | Iterative non-linear neighbourhood filter | `map_neighborhood_fn` + `cross_3x3` mask |
 | Data-dependent conductance per pixel | Closure captures `kappa_sq` and `Conductance` |
 | Linear-light processing loop | `convert_image(&img, SrgbGamma)` before and after |
-| Vector PM for colour images | Full RGB gradient magnitude in the conductance closure |
+| Vector PM for colour images | RMS RGB gradient magnitude in the conductance closure |
 | Multi-format I/O | `fovea_io::load` + per-codec encode (`png`, `jpeg`, `bmp`) |
 
 ---
@@ -173,9 +173,9 @@ alpha, indexed) are rejected with a descriptive error message; convert to
 A minimal first-contact example that shows the core fovea workflow in a
 single `main` function: **decode → convert → manipulate → encode**.
 
-It loads the classic *cameraman* test image (an 8-bit sRGB grayscale PNG),
-converts it to linear RGB, boosts the red channel to give it a colour tint,
-converts back to sRGB, and writes the result as a new PNG.
+It loads the Terrace sample image (an 8-bit sRGB grayscale JPEG), converts it
+to linear RGB, boosts the red channel to give it a colour tint, converts back
+to sRGB, and writes the result as a new PNG.
 
 ### Quick start
 
@@ -183,14 +183,14 @@ converts back to sRGB, and writes the result as a new PNG.
 cargo run --bin simple
 ```
 
-This reads `data/cameraman.png` and writes
-`data/cameraman_tinted.png`.
+This reads `data/Terrace.jpg` and writes
+`data/terrace_tinted.png`.
 
 ### What it demonstrates
 
 | Concept | API used |
 |---------|----------|
-| PNG decoding | `png::decode` → `PngImage::SrgbMono8` |
+| JPEG decoding | `jpeg::decode` → `JpegImage::SrgbMono8` |
 | Colour-space conversion | `SrgbGamma` (sRGB ↔ linear) |
 | Channel broadcasting | `Broadcast` (mono → RGB) |
 | Strategy chaining | `SrgbGamma.then::<f32, _>(Broadcast)` |
@@ -295,7 +295,7 @@ to exit.
 
 ### `show_srgb`
 
-Loads the cameraman test image (grayscale PNG), converts it to `Srgb8`,
+Loads the Terrace sample image (grayscale JPEG), converts it to `Srgb8`,
 and displays it using `Identity`.
 
 ```sh

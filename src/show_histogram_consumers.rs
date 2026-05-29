@@ -1,8 +1,7 @@
 //! # show_histogram_consumers — Otsu threshold + histogram equalization
 //!
-//! Loads the classic cameraman test image (8-bit grayscale PNG) and
-//! demonstrates the two direct consumers of the per-channel histogram
-//! engine:
+//! Loads the Terrace sample image (8-bit grayscale JPEG) and demonstrates the
+//! two direct consumers of the per-channel histogram engine:
 //!
 //! - [`otsu_binary_mask`] picks an automatic intensity threshold and
 //!   produces a [`BinaryImage`].
@@ -11,7 +10,7 @@
 //!
 //! Four debug windows open simultaneously:
 //!
-//! 1. **Original** cameraman.
+//! 1. **Original** Terrace luminance.
 //! 2. **Otsu binary mask** — window title carries the chosen threshold.
 //! 3. **Equalised image**.
 //! 4. **Histogram overlay** — input distribution (blue) vs. equalised
@@ -26,7 +25,7 @@
 //!
 //! ## Design notes
 //!
-//! The cameraman PNG decodes as `SrgbMono8`. Both Otsu and equalisation
+//! The Terrace JPEG decodes as `SrgbMono8`. Both Otsu and equalisation
 //! operate purely on histogram bins, so the gamma encoding of the
 //! source is immaterial — we re-tag the bytes as raw [`Mono8`] for the
 //! analysis pipeline. [`otsu_binary_mask`] requires the pixel type to
@@ -42,24 +41,24 @@ use fovea::analyze::histogram::{
 };
 use fovea::image::{BinaryImage, Image, ImageView};
 use fovea::pixel::{Mono8, SrgbMono8, Srgba8};
-use fovea_io::png::{self, PngImage};
+use fovea_io::jpeg::{self, JpegImage};
 
 use fovea_display::{DebugDisplay, HistogramLayer, HistogramPlotOptions, Identity};
 
 fn main() {
-    let path = "data/cameraman.png";
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/data/Terrace.jpg");
     let bytes = fs::read(path).unwrap_or_else(|e| {
         eprintln!("Failed to read {path}: {e}");
         eprintln!("Run this example from the fovea-examples repository root.");
         std::process::exit(1);
     });
 
-    let decoded = png::decode(&bytes).expect("failed to decode PNG");
-    let PngImage::SrgbMono8(srgb_mono) = decoded.image else {
-        panic!("expected SrgbMono8 cameraman");
+    let decoded = jpeg::decode(&bytes).expect("failed to decode JPEG");
+    let JpegImage::SrgbMono8(srgb_mono) = decoded.image else {
+        panic!("expected SrgbMono8 Terrace image");
     };
     let (w, h) = (srgb_mono.width(), srgb_mono.height());
-    println!("Cameraman {w}×{h} (SrgbMono8)");
+    println!("Terrace {w}×{h} (SrgbMono8)");
 
     // Treat the 8-bit intensities as raw `Mono8`. The histogram
     // consumers care about bin counts, not colour space.
@@ -89,8 +88,8 @@ fn main() {
     );
 
     // ── Promote to a displayable type (SrgbMono8 + Identity) ────────────────
-    // The cameraman's bytes are already sRGB-encoded greys, so we can
-    // re-tag the equalised result (and the binary mask) as SrgbMono8
+    // Terrace's bytes are already sRGB-encoded greys, so we can re-tag
+    // the equalised result (and the binary mask) as SrgbMono8
     // for direct display without double-gamma.
     let mask_display: Image<SrgbMono8> = Image::generate(w, h, |x, y| {
         SrgbMono8::new(if mask.pixel_at(x, y) { 255 } else { 0 })
@@ -116,7 +115,7 @@ fn main() {
     println!("Press any key in a window to exit.");
 
     DebugDisplay::run(move |ctx| {
-        ctx.show("1 — Cameraman (original)", &original_display, Identity);
+        ctx.show("1 — Terrace (original)", &original_display, Identity);
         ctx.show(
             &format!("2 — Otsu mask (threshold = {threshold})"),
             &mask_display,
