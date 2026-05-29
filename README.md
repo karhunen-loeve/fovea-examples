@@ -1,5 +1,6 @@
 # fovea examples
 
+[![CI](https://github.com/karhunen-loeve/fovea-examples/actions/workflows/ci.yml/badge.svg)](https://github.com/karhunen-loeve/fovea-examples/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Worked examples for the [fovea](https://github.com/karhunen-loeve/fovea) computer-vision crates.
