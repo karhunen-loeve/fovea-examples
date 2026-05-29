@@ -1,0 +1,61 @@
+[package]
+name = "fovea-examples"
+version.workspace = true
+edition.workspace = true
+publish = false
+license.workspace = true
+readme = "README.md"
+
+[dependencies]
+fovea = { path = "../fovea" }
+fovea-io = { path = "../fovea-io", features = ["all-codecs"] }
+fovea-display = { path = "../fovea-display", features = ["debug-window"] }
+clap = { version = "4", features = ["derive"] }
+
+[[bin]]
+name = "simple"
+path = "src/simple.rs"
+
+[[bin]]
+name = "resize"
+path = "src/resize.rs"
+
+[[bin]]
+name = "show_srgb"
+path = "src/show_srgb.rs"
+
+[[bin]]
+name = "show_mono16"
+path = "src/show_mono16.rs"
+
+[[bin]]
+name = "show_roi"
+path = "src/show_roi.rs"
+
+[[bin]]
+name = "show_multi"
+path = "src/show_multi.rs"
+
+[[bin]]
+name = "show_linear"
+path = "src/show_linear.rs"
+
+[[bin]]
+name = "edge_overlay"
+path = "src/edge_overlay.rs"
+
+[[bin]]
+name = "perona_malik"
+path = "src/perona_malik.rs"
+
+[[bin]]
+name = "show_histogram"
+path = "src/show_histogram.rs"
+
+[[bin]]
+name = "show_histogram_consumers"
+path = "src/show_histogram_consumers.rs"
+
+[[bin]]
+name = "tile_flip_rotate"
+path = "src/tile_flip_rotate.rs"
