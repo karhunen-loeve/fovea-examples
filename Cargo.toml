@@ -1,16 +1,27 @@
 [package]
-name = "fovea-examples"
+name              = "fovea-examples"
+description       = "End-to-end example programs for the fovea computer-vision crates"
 version.workspace = true
 edition.workspace = true
-publish = false
 license.workspace = true
-readme = "README.md"
+authors.workspace = true
+readme            = "README.md"
+publish           = false
 
+# NOTE: the dependencies below are *version*-based (against crates.io),
+# not path-based, so that this repo's public CI compiles against a real
+# release of the fovea crates — the integration smoke test that
+# justifies a separate examples repo.
+#
+# For local development against in-progress code, the private workspace
+# at `fovea-workspace/Cargo.toml` defines a `[patch.crates-io]` block
+# that redirects these to the in-tree paths. That patch never reaches
+# the public `fovea-examples` repo.
 [dependencies]
-fovea = { path = "../fovea" }
-fovea-io = { path = "../fovea-io", features = ["all-codecs"] }
-fovea-display = { path = "../fovea-display", features = ["debug-window"] }
-clap = { version = "4", features = ["derive"] }
+fovea         = "0.1.1"
+fovea-io      = { version = "0.1.1", features = ["all-codecs"] }
+fovea-display = { version = "0.1.1", features = ["debug-window"] }
+clap          = { version = "4", features = ["derive"] }
 
 [[bin]]
 name = "simple"
