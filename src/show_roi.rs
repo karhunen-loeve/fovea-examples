@@ -64,7 +64,7 @@ fn main() {
     // Now split the image into tiles and show each one
     let tile_w = width / 2;
     let tile_h = height / 2;
-    let cols = (width + tile_w - 1) / tile_w;
+    let cols = width.div_ceil(tile_w);
     for (i, tile) in img.into_tiles(Size::new(tile_w, tile_h)).enumerate() {
         let col = i % cols;
         let row = i / cols;
