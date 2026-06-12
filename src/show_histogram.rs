@@ -14,7 +14,7 @@
 //!
 //! This is also the pattern you would use for an RGB image's three
 //! channels: build one [`HistogramLayer`] per channel and hand them
-//! to [`debug_histogram_layers`] in one call.
+//! to `debug_histogram_layers` in one call.
 //!
 //! ```text
 //! cargo run --bin show_histogram

@@ -65,7 +65,7 @@ fn main() {
     let tile_w = width / 2;
     let tile_h = height / 2;
     let cols = width.div_ceil(tile_w);
-    for (i, tile) in img.into_tiles(Size::new(tile_w, tile_h)).enumerate() {
+    for (i, tile) in img.tiles(Size::new(tile_w, tile_h)).enumerate() {
         let col = i % cols;
         let row = i / cols;
         println!("Showing tile at ({}, {})", col * tile_w, row * tile_h,);

@@ -3,8 +3,19 @@
 [![CI](https://github.com/karhunen-loeve/fovea-examples/actions/workflows/ci.yml/badge.svg)](https://github.com/karhunen-loeve/fovea-examples/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Worked examples for the [fovea](https://github.com/karhunen-loeve/fovea) computer-vision crates.
-Each example is a separate binary that demonstrates how the core, I/O, and display crates work together.
+End-to-end programs for the fovea crates. This repository is not published to crates.io; it is the place to see `fovea`, `fovea-io`, and `fovea-display` working together against released crate versions.
+
+If the crate docs show the building blocks, these examples show the whole pipeline: decode typed pixels, make conversions explicit, run transforms, display or encode the result.
+
+## Start here
+
+| If you want to... | Run |
+|---|---|
+| See the smallest decode → convert → encode pipeline | `cargo run --bin simple` |
+| Resize an image with linear-light bilinear interpolation | `cargo run --bin resize -- -i data/Terrace.jpg -W 800` |
+| See convolution, gradient magnitude, and overlay together | `cargo run --bin edge_overlay` |
+| Inspect display strategies | `cargo run --bin show_srgb` and `cargo run --bin show_linear` |
+| See ROI display | `cargo run --bin show_roi` |
 
 ## Building
 
