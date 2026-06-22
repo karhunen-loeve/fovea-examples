@@ -41,6 +41,10 @@ name = "show_mono16"
 path = "src/show_mono16.rs"
 
 [[bin]]
+name = "hysteresis_threshold"
+path = "src/hysteresis_threshold.rs"
+
+[[bin]]
 name = "show_roi"
 path = "src/show_roi.rs"
 

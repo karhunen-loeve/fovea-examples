@@ -14,6 +14,7 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | See the smallest decode → convert → encode pipeline | `cargo run --bin simple` |
 | Resize an image with linear-light bilinear interpolation | `cargo run --bin resize -- -i data/Terrace.jpg -W 800` |
 | See convolution, gradient magnitude, and overlay together | `cargo run --bin edge_overlay` |
+| Segment edges with a double (hysteresis) threshold | `cargo run --bin hysteresis_threshold` |
 | Inspect display strategies | `cargo run --bin show_srgb` and `cargo run --bin show_linear` |
 | See ROI display | `cargo run --bin show_roi` |
 
@@ -33,6 +34,7 @@ cargo build --release  # all examples, optimised
 | `simple`        | Minimal getting-started example — load, convert, manipulate, save |
 | `resize`        | Colour-space-aware image resizer (PNG, JPEG, BMP) |
 | `edge_overlay`  | Sobel edge detection + gradient magnitude + `LinearCombine` overlay |
+| `hysteresis_threshold` | Double-threshold edge segmentation (`hysteresis_threshold`) on a gradient-magnitude image |
 | `perona_malik`  | Perona-Malik anisotropic diffusion filter CLI — PNG, JPEG, BMP       |
 | `show_srgb`     | Load a JPEG and display it with `Identity` strategy |
 | `show_mono16`   | Synthetic Mono16 gradient displayed with `AutoContrast` |
@@ -82,6 +84,39 @@ Press any key or close any window to exit.
 edges `|`.  `sobel_y` computes `dI/dy` (vertical gradient) and lights up
 **horizontal** edges `―`.  The name refers to the gradient direction, not
 the orientation of the visible edge in the output image.
+
+---
+
+## `hysteresis_threshold`
+
+Demonstrates `analyze::threshold::hysteresis_threshold` — the **double-threshold**
+segmentation that forms the final stage of a Canny edge detector — on a real
+gradient-magnitude image:
+
+```text
+Terrace.jpg (SrgbMono8)
+  → SrgbGamma          → Image<f32>  (linear light, [0, 1])
+  → sobel_x / sobel_y  → Image<f32>  (signed gradients)
+  → Magnitude          → Image<f32>  (√(gx² + gy²), edge map)
+  → hysteresis_threshold(low, high)  → BinaryImage  (kept edges)
+```
+
+A weak pixel (`value >= low`) survives only if its 8-connected component
+contains a strong pixel (`value >= high`). The example derives `low` / `high`
+as fractions of the peak magnitude, then shows three masks built from the
+**same** function to make the trade-off visible:
+
+- **strong only** (`low == high`): clean, but strong edges fragment.
+- **low only** (`low == low`): connected, but noisy.
+- **hysteresis** (`low`, `high`): connected edges without the noise.
+
+### Quick start
+
+```sh
+cargo run --bin hysteresis_threshold
+```
+
+Press any key or close any window to exit.
 
 ---
 
