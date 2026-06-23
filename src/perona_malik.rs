@@ -179,7 +179,7 @@ fn pm_step_mono(
         mask.anchor(),
         &Clamp,
         move |center: MonoF32, neighbors: &mut dyn Iterator<Item = MapItem<MonoF32>>| {
-            // ADR-0045 Phase C: pixel role is MonoF32, but the PM math is a
+            // Pixel role is MonoF32, but the PM math is a
             // plain scalar recurrence. Extract at the boundary, do arithmetic
             // in f32, and wrap the result — avoids redesigning the algebra.
             let center: f32 = center.0;
