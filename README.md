@@ -15,6 +15,7 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | Resize an image with linear-light bilinear interpolation | `cargo run --bin resize -- -i data/Terrace.jpg -W 800` |
 | See convolution, gradient magnitude, and overlay together | `cargo run --bin edge_overlay` |
 | Segment edges with a double (hysteresis) threshold | `cargo run --bin hysteresis_threshold` |
+| Detect edges with the full Canny pipeline | `cargo run --bin canny` |
 | Inspect display strategies | `cargo run --bin show_srgb` and `cargo run --bin show_linear` |
 | See ROI display | `cargo run --bin show_roi` |
 
@@ -35,6 +36,7 @@ cargo build --release  # all examples, optimised
 | `resize`        | Colour-space-aware image resizer (PNG, JPEG, BMP) |
 | `edge_overlay`  | Sobel edge detection + gradient magnitude + `LinearCombine` overlay |
 | `hysteresis_threshold` | Double-threshold edge segmentation (`hysteresis_threshold`) on a gradient-magnitude image |
+| `canny`         | Full Canny edge detector (`analyze::edge::canny`) with every intermediate stage displayed |
 | `perona_malik`  | Perona-Malik anisotropic diffusion filter CLI — PNG, JPEG, BMP       |
 | `show_srgb`     | Load a JPEG and display it with `Identity` strategy |
 | `show_mono16`   | Synthetic Mono16 gradient displayed with `AutoContrast` |
@@ -114,6 +116,37 @@ as fractions of the peak magnitude, then shows three masks built from the
 
 ```sh
 cargo run --bin hysteresis_threshold
+```
+
+Press any key or close any window to exit.
+
+---
+
+## `canny`
+
+Demonstrates `analyze::edge::canny` — the **complete** single-scale Canny edge
+detector — and, because every stage is a public function, rebuilds the same
+pipeline by hand so each intermediate can be shown:
+
+```text
+Terrace.jpg (SrgbMono8)
+  → SrgbGamma                    → Image<f32>  (linear light, [0, 1])
+  → gaussian_blur(sigma)         → Image<f32>  (true-σ Gaussian smoothing)
+  → scharr_x / scharr_y          → Image<f32>  (signed gradients)
+  → gradient_magnitude / _direction → Image<f32>  (edge strength + angle)
+  → non_maximum_suppression      → Image<f32>  (thinned ridge)
+  → hysteresis_threshold(low, high) → BinaryImage  (linked edges)
+```
+
+`sigma` is a true Gaussian standard deviation; `low` / `high` are absolute
+gradient-magnitude thresholds whose meaning is stable across `sigma` because
+the blur preserves brightness. The example asserts that the hand-built mask
+equals the one-call `canny(&linear, low, high, sigma)`.
+
+### Quick start
+
+```sh
+cargo run --bin canny
 ```
 
 Press any key or close any window to exit.

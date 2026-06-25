@@ -45,6 +45,10 @@ name = "hysteresis_threshold"
 path = "src/hysteresis_threshold.rs"
 
 [[bin]]
+name = "canny"
+path = "src/canny.rs"
+
+[[bin]]
 name = "adaptive_threshold"
 path = "src/adaptive_threshold.rs"
 
