@@ -52,9 +52,9 @@ fn main() {
     // `sigma` is a true Gaussian standard deviation; `low`/`high` are absolute
     // gradient-magnitude thresholds (stable across sigma because the blur
     // preserves brightness).
-    let sigma = 1.4_f32;
+    let sigma = 2.4_f32;
     let low = 0.06_f32;
-    let high = 0.16_f32;
+    let high = 0.26_f32;
     println!("sigma = {sigma}, low = {low}, high = {high}");
 
     // ── 1. Linearise: SrgbMono8 → MonoF32 in [0.0, 1.0] linear light ──────────
