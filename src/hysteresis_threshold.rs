@@ -61,7 +61,7 @@ fn main() {
 
     // ── 3. Pick thresholds relative to the peak magnitude ─────────────────────
     // Hysteresis takes its thresholds as explicit, named arguments (it never
-    // infers them — Philosophy §8). Here the *example* derives sensible levels
+    // infers them). Here the *example* derives sensible levels
     // from the data; in a real pipeline they'd be tuned constants.
     let mut peak = 0.0f32;
     for y in 0..magnitude.height() {
