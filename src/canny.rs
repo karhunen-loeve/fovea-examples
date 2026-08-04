@@ -25,6 +25,7 @@ use fovea::analyze::edge::canny;
 use fovea::analyze::threshold::hysteresis_threshold;
 use fovea::border::Clamp;
 use fovea::image::{BinaryImage, Image, ImageView, RasterImage};
+use fovea::Sigma;
 use fovea::pixel::{MonoF32, SrgbMono8};
 use fovea::transform::{
     SrgbGamma, convert_image, gaussian_blur, gradient_direction, gradient_magnitude,
@@ -52,10 +53,10 @@ fn main() {
     // `sigma` is a true Gaussian standard deviation; `low`/`high` are absolute
     // gradient-magnitude thresholds (stable across sigma because the blur
     // preserves brightness).
-    let sigma = 2.4_f32;
+    let sigma = Sigma::new(2.4);
     let low = 0.06_f32;
     let high = 0.26_f32;
-    println!("sigma = {sigma}, low = {low}, high = {high}");
+    println!("sigma = {}, low = {low}, high = {high}", sigma.get());
 
     // ── 1. Linearise: SrgbMono8 → MonoF32 in [0.0, 1.0] linear light ──────────
     let linear: Image<MonoF32> = convert_image(&mono, SrgbGamma);
@@ -66,7 +67,8 @@ fn main() {
     let gy = scharr_y(&blurred, &Clamp);
     let magnitude = gradient_magnitude(&gx, &gy).expect("gx/gy share a size");
     let direction = gradient_direction(&gx, &gy).expect("gx/gy share a size");
-    let thinned = non_maximum_suppression(&magnitude, &direction);
+    let thinned = non_maximum_suppression(&magnitude, &direction)
+        .expect("magnitude and direction share a size");
     let edges_manual = hysteresis_threshold(&thinned, low, high);
 
     // ── The one-call form — identical result ──────────────────────────────────
@@ -85,7 +87,7 @@ fn main() {
     DebugDisplay::run(move |ctx| {
         ctx.show("1 — Terrace luminance (linear)", &linear, LinearToDisplay);
         ctx.show(
-            &format!("2 — Gaussian blur (σ = {sigma})"),
+            &format!("2 — Gaussian blur (σ = {})", sigma.get()),
             &blurred,
             LinearToDisplay,
         );
