@@ -53,6 +53,10 @@ name = "adaptive_threshold"
 path = "src/adaptive_threshold.rs"
 
 [[bin]]
+name = "harris"
+path = "src/harris.rs"
+
+[[bin]]
 name = "show_roi"
 path = "src/show_roi.rs"
 

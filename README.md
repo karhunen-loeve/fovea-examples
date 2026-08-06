@@ -16,6 +16,7 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | See convolution, gradient magnitude, and overlay together | `cargo run --bin edge_overlay` |
 | Segment edges with a double (hysteresis) threshold | `cargo run --bin hysteresis_threshold` |
 | Detect edges with the full Canny pipeline | `cargo run --bin canny` |
+| Find corners with Harris and Shi-Tomasi | `cargo run --bin harris` |
 | Inspect display strategies | `cargo run --bin show_srgb` and `cargo run --bin show_linear` |
 | See ROI display | `cargo run --bin show_roi` |
 
@@ -37,6 +38,7 @@ cargo build --release  # all examples, optimised
 | `edge_overlay`  | Sobel edge detection + gradient magnitude + `LinearCombine` overlay |
 | `hysteresis_threshold` | Double-threshold edge segmentation (`hysteresis_threshold`) on a gradient-magnitude image |
 | `canny`         | Full Canny edge detector (`analyze::edge::canny`) with every intermediate stage displayed |
+| `harris`        | Harris and Shi-Tomasi corner detection (`features::detect`), calibrated thresholds, and the localization drift |
 | `perona_malik`  | Perona-Malik anisotropic diffusion filter CLI — PNG, JPEG, BMP       |
 | `show_srgb`     | Load a JPEG and display it with `Identity` strategy |
 | `show_mono16`   | Synthetic Mono16 gradient displayed with `AutoContrast` |
@@ -147,6 +149,67 @@ equals the one-call `canny(&linear, low, high, sigma)`.
 
 ```sh
 cargo run --bin canny
+```
+
+Press any key or close any window to exit.
+
+---
+
+## `harris`
+
+Demonstrates `features::detect` — Harris and Shi-Tomasi as two **response
+strategies over one pipeline**, not two detectors:
+
+```text
+Terrace.jpg (SrgbMono8)
+  → SrgbGamma                       → Image<MonoF32>  (linear light, [0, 1])
+  → sobel_x / sobel_y               → Image<MonoF32>  (signed gradients)
+  → StructureTensor(window σ)        → Sxx, Sxy, Syy   (windowed products)
+  → Harris | ShiTomasi              → Image<MonoF32>  (response map)
+  → corner_peaks(threshold, radius) → Vec<Corner>     (raster order)
+  → retain_top_n                    → the strongest N (deterministic)
+```
+
+Three things the example is really about:
+
+**The threshold cannot be guessed.** It is absolute, in the response map's own
+units, and those units carry the gradient operator's gain and the image
+contrast at the measure's own power — squared for Shi-Tomasi, *fourth* for
+Harris. The example calibrates against each map's own maximum and prints both
+peaks, which is why one uses 2 % and the other 5 % of it.
+
+**The operator is a choice.** After the one-call form, the example rebuilds the
+same detection over a `StructureTensor` built from **Scharr** gradients rather
+than the pinned Sobel, and prints both corner counts. Nothing had to be forked
+to do that.
+
+**The reported corner is not exactly the corner.** On a synthetic square with
+an exactly known corner, the example prints the detected position for four
+window sizes:
+
+```text
+localization on a synthetic square (true corner at 7.5, 7.5):
+  σ = 0.8: 4 corners, top-left at (8, 8), 0.71 px from truth
+  σ = 1.0: 4 corners, top-left at (8, 8), 0.71 px from truth
+  σ = 1.4: 4 corners, top-left at (9, 9), 2.12 px from truth
+  σ = 2.0: 4 corners, top-left at (9, 9), 2.12 px from truth
+```
+
+The window averages the two edges meeting at a corner, and that average is
+strongest slightly *inside* it — so a larger window is more noise-robust and
+less precisely localized. The bias is systematic rather than noisy, so it does
+not average away over frames. This is expected behaviour for every
+structure-tensor detector, and the reason sub-pixel refinement is a separate
+step from detection.
+
+Corner markers are drawn by the example itself: the crate has no drawing
+primitives yet, so the marker loop is scaffolding rather than an API being
+demonstrated.
+
+### Quick start
+
+```sh
+cargo run --bin harris
 ```
 
 Press any key or close any window to exit.
