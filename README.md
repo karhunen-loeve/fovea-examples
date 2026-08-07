@@ -241,11 +241,22 @@ and would be `20.0` for the same picture as `Mono8`. Nothing has to be
 calibrated against a response map first, which is the ergonomic difference
 from Harris.
 
-**The arc length is a selectivity dial, not a quality dial.** The example
-sweeps FAST-9 through FAST-12 and prints the counts. A 90° corner leaves only
-11 contiguous ring pixels on the outside, so FAST-12 rejects right angles
-outright — on a photograph that shows up as a steep drop rather than an empty
-result.
+**The arc length matters far less on a photograph than on a test pattern.**
+A 90° corner leaves only 11 contiguous ring pixels on the outside, so FAST-12
+rejects every right angle in a synthetic square — all of them, not most. On
+Terrace the same change moves the count by about 8 %:
+
+```text
+arc length sweep (t = 0.08):
+  FAST-9: 2358 corners
+  FAST-10: 2285 corners
+  FAST-11: 2223 corners
+  FAST-12: 2163 corners
+```
+
+Natural corners are blobs, texture and junctions rather than clean wedges,
+and those clear long arcs too. The example prints this precisely because the
+synthetic intuition does not transfer.
 
 **The border is the crate's ordinary vocabulary.** `Skip` declines the
 3-pixel margin where the ring does not fit (a detection there would be built
@@ -281,12 +292,17 @@ spends its time in separable blurs that vectorize, while this one is a scalar
 per-pixel scan. The printed numbers are the honest current state, not the
 reputation.
 
+**Run this one with `--release`.** An unoptimised build is roughly 18× slower
+here and not by the same factor for both detectors, so the debug timings
+invite exactly the wrong conclusion. The example prints a warning if you
+forget.
+
 Corner markers are drawn by the example itself, as in `harris`.
 
 ### Quick start
 
 ```sh
-cargo run --bin fast
+cargo run --release --bin fast
 ```
 
 Press any key or close any window to exit.

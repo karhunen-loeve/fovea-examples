@@ -55,6 +55,17 @@ fn main() {
     let (w, h) = (mono.width(), mono.height());
     println!("Terrace {w}×{h} (SrgbMono8)");
 
+    // This example times two detectors against each other, and an unoptimised
+    // build makes that comparison meaningless — roughly 18× slower here, and
+    // not by the same factor for both. Say so rather than printing numbers
+    // that invite the wrong conclusion.
+    if cfg!(debug_assertions) {
+        println!(
+            "\n  ⚠ debug build: the timings below are not meaningful.\n    \
+             Re-run with `cargo run --release --bin fast` to compare them.\n"
+        );
+    }
+
     // ── 1. Linearise: SrgbMono8 → MonoF32 in [0.0, 1.0] linear light ──────────
     let linear: Image<MonoF32> = convert_image(&mono, SrgbGamma);
 
@@ -97,9 +108,12 @@ fn main() {
     }
 
     // ── 3. What the arc length does ───────────────────────────────────────────
-    // FAST-9 accepts a right angle; FAST-12 does not, because a 90° corner
-    // leaves only 11 contiguous ring pixels on the outside. On a photograph
-    // the effect is a steep drop in count rather than an empty result.
+    // On synthetic geometry the arc length is decisive: FAST-9 accepts a right
+    // angle and FAST-12 rejects every one of them, because a 90° corner leaves
+    // only 11 contiguous ring pixels on the outside. On a photograph it barely
+    // moves the count — natural corners are blobs, texture and junctions
+    // rather than clean wedges, and those clear long arcs too. Worth printing
+    // precisely because the synthetic intuition does not transfer.
     println!("\narc length sweep (t = {threshold}):");
     for n in 9..=12 {
         let sweep = FastParams::new(SegmentTest::new(threshold, n), nms_radius);
@@ -132,10 +146,13 @@ fn main() {
     let shi_elapsed = started.elapsed();
     retain_top_n(&mut shi_corners, keep);
 
-    println!("\nShi-Tomasi on the same frame: {} corners (top {keep} kept) in {shi_elapsed:.1?}", shi_corners.len());
     println!(
-        "  FAST took {fast_elapsed:.1?} — the segment test is not automatically the cheaper one \
-         here; see the module docs on where its time goes"
+        "\nShi-Tomasi on the same frame: {} corners (top {keep} kept) in {shi_elapsed:.1?}",
+        shi_corners.len(),
+    );
+    println!(
+        "  FAST took {fast_elapsed:.1?} — reading 17 samples per pixel does not make it the \
+         cheaper detector here; see the module docs on where its time goes"
     );
     println!(
         "  the two agree (within 2 px) on {} of the strongest {keep}",
