@@ -57,6 +57,10 @@ name = "harris"
 path = "src/harris.rs"
 
 [[bin]]
+name = "fast"
+path = "src/fast.rs"
+
+[[bin]]
 name = "show_roi"
 path = "src/show_roi.rs"
 

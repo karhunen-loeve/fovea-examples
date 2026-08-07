@@ -17,6 +17,7 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | Segment edges with a double (hysteresis) threshold | `cargo run --bin hysteresis_threshold` |
 | Detect edges with the full Canny pipeline | `cargo run --bin canny` |
 | Find corners with Harris and Shi-Tomasi | `cargo run --bin harris` |
+| Find corners with the FAST segment test | `cargo run --bin fast` |
 | Inspect display strategies | `cargo run --bin show_srgb` and `cargo run --bin show_linear` |
 | See ROI display | `cargo run --bin show_roi` |
 
@@ -39,6 +40,7 @@ cargo build --release  # all examples, optimised
 | `hysteresis_threshold` | Double-threshold edge segmentation (`hysteresis_threshold`) on a gradient-magnitude image |
 | `canny`         | Full Canny edge detector (`analyze::edge::canny`) with every intermediate stage displayed |
 | `harris`        | Harris and Shi-Tomasi corner detection (`features::detect`), calibrated thresholds, and the localization drift |
+| `fast`          | FAST segment-test corner detection (`features::detect::fast`), the arc-length sweep, the border policy as a choice, and a timed comparison against Shi-Tomasi |
 | `perona_malik`  | Perona-Malik anisotropic diffusion filter CLI — PNG, JPEG, BMP       |
 | `show_srgb`     | Load a JPEG and display it with `Identity` strategy |
 | `show_mono16`   | Synthetic Mono16 gradient displayed with `AutoContrast` |
@@ -210,6 +212,81 @@ demonstrated.
 
 ```sh
 cargo run --bin harris
+```
+
+Press any key or close any window to exit.
+
+---
+
+## `fast`
+
+The other detector family in `features::detect`, on the same frame as
+`harris` so the two can be read against each other. FAST decides from **raw
+intensities on a 16-pixel ring**, not from a gradient:
+
+```text
+Terrace.jpg (SrgbMono8)
+  → SrgbGamma                       → Image<MonoF32>  (linear light, [0, 1])
+  → SegmentTest(t, arc_length)       → the test itself, validated once
+  → fast_score_map(.., &Skip)        → Image<MonoF32>  (score map)
+  → corner_peaks(t, radius)          → Vec<Corner>     (raster order)
+  → retain_top_n                     → the strongest N (deterministic)
+```
+
+Four things the example is really about:
+
+**The threshold *can* be guessed — that is the point.** It is an intensity
+difference on the image's own scale: `0.08` is eight per cent contrast here,
+and would be `20.0` for the same picture as `Mono8`. Nothing has to be
+calibrated against a response map first, which is the ergonomic difference
+from Harris.
+
+**The arc length is a selectivity dial, not a quality dial.** The example
+sweeps FAST-9 through FAST-12 and prints the counts. A 90° corner leaves only
+11 contiguous ring pixels on the outside, so FAST-12 rejects right angles
+outright — on a photograph that shows up as a steep drop rather than an empty
+result.
+
+**The border is the crate's ordinary vocabulary.** `Skip` declines the
+3-pixel margin where the ring does not fit (a detection there would be built
+from invented samples); `Clamp` extends the image and reports them.
+`fast_score_at` puts the difference in its return type — `None` is "not
+scored", `Some(0.0)` is "scored, and not a corner".
+
+**The reported corner is not exactly the corner, for a different reason than
+Harris'.** On a synthetic square with exactly known corners at 10 and 21:
+
+```text
+localization on a synthetic square (true corners at 10/21):
+  t = 0.05: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  t = 0.20: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  t = 0.50: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  t = 0.90: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  pixels tied at the full contrast around (10, 10): [(10, 10), (11, 10), (12, 10), (10, 11), (11, 11), (10, 12)]
+```
+
+No parameter moves those positions — unlike the structure tensor, whose peak
+walks inward as σ grows. What moves them off the corner instead is
+**saturation**: once an arc clears the threshold everywhere, six pixels around
+each corner reach the *identical* full contrast, and the peak stage's
+tie-break reports each tied cluster's raster-first member. For the top-left
+corner that is the corner; for the others it is up to two pixels along an
+edge. Both families therefore have a localization bias, by different
+mechanisms, and neither is fixable by tuning — which is the argument for a
+refinement step.
+
+The example also times both detectors on the same frame. Do not expect the
+segment test to win: it reads far less data, but the structure-tensor path
+spends its time in separable blurs that vectorize, while this one is a scalar
+per-pixel scan. The printed numbers are the honest current state, not the
+reputation.
+
+Corner markers are drawn by the example itself, as in `harris`.
+
+### Quick start
+
+```sh
+cargo run --bin fast
 ```
 
 Press any key or close any window to exit.
