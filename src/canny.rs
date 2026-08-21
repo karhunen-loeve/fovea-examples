@@ -11,7 +11,7 @@
 //! 5. **Hysteresis threshold** links weak edges to strong ones → `BinaryImage`.
 //!
 //! The final hand-built mask is identical to the one-call
-//! `canny(&linear, low, high, sigma)`, shown side by side.
+//! `canny(&linear, thresholds, sigma)`, shown side by side.
 //!
 //! ```text
 //! cargo run --bin canny
@@ -22,7 +22,7 @@
 use std::fs;
 
 use fovea::analyze::edge::canny;
-use fovea::analyze::threshold::hysteresis_threshold;
+use fovea::analyze::threshold::{HysteresisThresholds, hysteresis_threshold};
 use fovea::border::Clamp;
 use fovea::image::{BinaryImage, Image, ImageView, RasterImage};
 use fovea::Sigma;
@@ -54,9 +54,15 @@ fn main() {
     // gradient-magnitude thresholds (stable across sigma because the blur
     // preserves brightness).
     let sigma = Sigma::new(2.4);
-    let low = 0.06_f32;
-    let high = 0.26_f32;
-    println!("sigma = {}, low = {low}, high = {high}", sigma.get());
+    // The pair is one value: `low <= high` is a relation, so it is validated
+    // once here rather than on entry to each stage that consumes it.
+    let thresholds = HysteresisThresholds::new(0.06_f32, 0.26);
+    println!(
+        "sigma = {}, low = {}, high = {}",
+        sigma.get(),
+        thresholds.low(),
+        thresholds.high()
+    );
 
     // ── 1. Linearise: SrgbMono8 → MonoF32 in [0.0, 1.0] linear light ──────────
     let linear: Image<MonoF32> = convert_image(&mono, SrgbGamma);
@@ -69,10 +75,10 @@ fn main() {
     let direction = gradient_direction(&gx, &gy).expect("gx/gy share a size");
     let thinned = non_maximum_suppression(&magnitude, &direction)
         .expect("magnitude and direction share a size");
-    let edges_manual = hysteresis_threshold(&thinned, low, high);
+    let edges_manual = hysteresis_threshold(&thinned, thresholds);
 
     // ── The one-call form — identical result ──────────────────────────────────
-    let edges = canny(&linear, low, high, sigma);
+    let edges = canny(&linear, thresholds, sigma);
     assert_eq!(
         count_true(&edges),
         count_true(&edges_manual),
@@ -107,7 +113,11 @@ fn main() {
             AutoContrast::scan_with(&thinned, |p| p.0 as f64),
         );
         ctx.show(
-            &format!("6 — Canny edges (low={low}, high={high})"),
+            &format!(
+                "6 — Canny edges (low={}, high={})",
+                thresholds.low(),
+                thresholds.high()
+            ),
             &edge_display,
             Identity,
         );

@@ -28,7 +28,7 @@
 
 use std::fs;
 
-use fovea::analyze::threshold::hysteresis_threshold;
+use fovea::analyze::threshold::{HysteresisThresholds, hysteresis_threshold};
 use fovea::border::Clamp;
 use fovea::image::{BinaryImage, Image, ImageView, RasterImage};
 use fovea::pixel::{MonoF32, SrgbMono8};
@@ -69,16 +69,21 @@ fn main() {
             peak = peak.max(p.0);
         }
     }
+    // Derived from the image, so `try_new` rather than `new`: a degenerate
+    // frame (peak 0, or a NaN from an empty magnitude map) is a value to
+    // report, not a panic. `new` is for literals.
     let low = 0.08 * peak;
     let high = 0.20 * peak;
+    let thresholds = HysteresisThresholds::try_new(low, high)
+        .expect("0.08·peak <= 0.20·peak for any finite non-negative peak");
     println!("magnitude peak = {peak:.4}  →  low = {low:.4}, high = {high:.4}");
 
     // ── 4. Three masks from one function ──────────────────────────────────────
     // Equal thresholds collapse the weak band: every kept component must
     // already contain a `>= t` pixel, so the result is a plain threshold at t.
-    let strong_only = hysteresis_threshold(&magnitude, high, high);
-    let low_only = hysteresis_threshold(&magnitude, low, low);
-    let hysteresis = hysteresis_threshold(&magnitude, low, high);
+    let strong_only = hysteresis_threshold(&magnitude, HysteresisThresholds::new(high, high));
+    let low_only = hysteresis_threshold(&magnitude, HysteresisThresholds::new(low, low));
+    let hysteresis = hysteresis_threshold(&magnitude, thresholds);
 
     println!(
         "kept pixels — strong-only: {}, low-only: {}, hysteresis: {}",

@@ -30,7 +30,7 @@
 
 use std::fs;
 
-use fovea::Error;
+use fovea::{Error, OddWindowSide};
 use fovea::analyze::histogram::otsu_binary_mask;
 use fovea::analyze::threshold::{Bias, adaptive_threshold};
 use fovea::image::{BinaryImage, Image, ImageView, RasterImage};
@@ -38,9 +38,10 @@ use fovea::pixel::{Mono8, Mono32, Mono64, SrgbMono8};
 use fovea_display::{DebugDisplay, Identity, LinearToDisplay};
 use fovea_io::jpeg::{self, JpegImage};
 
-/// Local window side length (must be odd). Roughly the scale of the
-/// structure to separate from its background.
-const WINDOW: usize = 31;
+/// Local window side length. Roughly the scale of the structure to
+/// separate from its background. `OddWindowSide::new` is a `const fn`, so an
+/// even side length here is a **compile** error, not a runtime one.
+const WINDOW: OddWindowSide = OddWindowSide::new(31);
 /// Bias on the local mean. Positive lifts the threshold's *acceptance*
 /// (foreground = `pixel > local_mean − bias`), trimming faint noise just
 /// above the local average.
@@ -73,7 +74,7 @@ fn main() {
     // ── 2b. Adaptive — per-pixel local mean over a WINDOW×WINDOW neighbourhood ─
     // Accumulator named explicitly (Mono32). If the image is too large for a
     // 32-bit accumulator, the error is actionable — widen to Mono64.
-    println!("adaptive: window = {WINDOW}, bias = {BIAS}");
+    println!("adaptive: window = {}, bias = {BIAS}", WINDOW.get());
     let adaptive = match adaptive_threshold::<_, Mono32>(&mono, WINDOW, Bias::new(BIAS)) {
         Ok(mask) => mask,
         Err(Error::AccumulatorOverflow {
@@ -109,7 +110,10 @@ fn main() {
             Identity,
         );
         ctx.show(
-            &format!("3 — Adaptive (window {WINDOW}, bias {BIAS}) — local detail kept"),
+            &format!(
+                "3 — Adaptive (window {}, bias {BIAS}) — local detail kept",
+                WINDOW.get()
+            ),
             &adaptive_display,
             Identity,
         );

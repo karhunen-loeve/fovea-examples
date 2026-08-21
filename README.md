@@ -104,13 +104,16 @@ Terrace.jpg (SrgbMono8)
   → SrgbGamma          → Image<f32>  (linear light, [0, 1])
   → sobel_x / sobel_y  → Image<f32>  (signed gradients)
   → Magnitude          → Image<f32>  (√(gx² + gy²), edge map)
-  → hysteresis_threshold(low, high)  → BinaryImage  (kept edges)
+  → hysteresis_threshold(thresholds) → BinaryImage  (kept edges)
 ```
 
 A weak pixel (`value >= low`) survives only if its 8-connected component
-contains a strong pixel (`value >= high`). The example derives `low` / `high`
-as fractions of the peak magnitude, then shows three masks built from the
-**same** function to make the trade-off visible:
+contains a strong pixel (`value >= high`). The pair travels as one
+`HysteresisThresholds` value, since `low <= high` is a relation neither number
+carries alone. The example derives `low` / `high` as fractions of the peak
+magnitude, so it uses `HysteresisThresholds::try_new`, the constructor for
+computed values. It then shows three masks built from the **same** function to
+make the trade-off visible:
 
 - **strong only** (`low == high`): clean, but strong edges fragment.
 - **low only** (`low == low`): connected, but noisy.
@@ -139,13 +142,13 @@ Terrace.jpg (SrgbMono8)
   → scharr_x / scharr_y          → Image<f32>  (signed gradients)
   → gradient_magnitude / _direction → Image<f32>  (edge strength + angle)
   → non_maximum_suppression      → Image<f32>  (thinned ridge)
-  → hysteresis_threshold(low, high) → BinaryImage  (linked edges)
+  → hysteresis_threshold(thresholds) → BinaryImage  (linked edges)
 ```
 
-`sigma` is a true Gaussian standard deviation; `low` / `high` are absolute
-gradient-magnitude thresholds whose meaning is stable across `sigma` because
-the blur preserves brightness. The example asserts that the hand-built mask
-equals the one-call `canny(&linear, low, high, sigma)`.
+`sigma` is a true Gaussian standard deviation; `thresholds` carries the
+absolute gradient-magnitude pair, whose meaning is stable across `sigma`
+because the blur preserves brightness. The example asserts that the
+hand-built mask equals the one-call `canny(&linear, thresholds, sigma)`.
 
 ### Quick start
 
