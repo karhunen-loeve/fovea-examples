@@ -25,8 +25,8 @@ use fovea::analyze::edge::canny;
 use fovea::analyze::threshold::{HysteresisThresholds, hysteresis_threshold};
 use fovea::border::Clamp;
 use fovea::image::{BinaryImage, Image, ImageView, RasterImage};
-use fovea::Sigma;
 use fovea::pixel::{MonoF32, SrgbMono8};
+use fovea::sigma;
 use fovea::transform::{
     SrgbGamma, convert_image, gaussian_blur, gradient_direction, gradient_magnitude,
     non_maximum_suppression, scharr_x, scharr_y,
@@ -53,10 +53,10 @@ fn main() {
     // `sigma` is a true Gaussian standard deviation; `low`/`high` are absolute
     // gradient-magnitude thresholds (stable across sigma because the blur
     // preserves brightness).
-    let sigma = Sigma::new(2.4);
+    let sigma = sigma!(2.4);
     // The pair is one value: `low <= high` is a relation, so it is validated
     // once here rather than on entry to each stage that consumes it.
-    let thresholds = HysteresisThresholds::new(0.06_f32, 0.26);
+    let thresholds = HysteresisThresholds::try_new(0.06_f32, 0.26).unwrap();
     println!(
         "sigma = {}, low = {}, high = {}",
         sigma.get(),

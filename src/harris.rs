@@ -29,13 +29,13 @@ use std::fs;
 use fovea::Sigma;
 use fovea::border::Clamp;
 use fovea::features::detect::{
-    CornerParams, Harris, ShiTomasi, StructureTensor, corner_peaks, corner_response_map,
-    detect_corners,
+    CornerParams, ShiTomasi, StructureTensor, corner_peaks, corner_response_map, detect_corners,
 };
 use fovea::features::{Corner, HasPosition, HasResponse, retain_top_n};
 use fovea::image::{Image, ImageView, ImageViewMut};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
 use fovea::transform::{SrgbGamma, convert_image, scharr_x, scharr_y};
+use fovea::{harris, sigma};
 use fovea_display::{AutoContrast, DebugDisplay, Identity, LinearToDisplay};
 use fovea_io::jpeg::{self, JpegImage};
 
@@ -61,10 +61,10 @@ fn main() {
     // between two reported corners. `k` is Harris' sensitivity — its type
     // rejects the two silent failure modes, k ≤ 0 (edges become rewards) and
     // k ≥ 0.25 (nothing can ever fire).
-    let window = Sigma::new(1.4);
+    let window = sigma!(1.4);
     let nms_radius = 6;
     let keep = 200;
-    let harris = Harris::new(0.04);
+    let harris = harris!(0.04);
     println!(
         "window σ = {}, nms radius = {nms_radius}, k = {}",
         window.get(),
@@ -227,7 +227,7 @@ fn report_localization_drift() {
 
     println!("\nlocalization on a synthetic square (true corner at 7.5, 7.5):");
     for sigma in [0.8_f32, 1.0, 1.4, 2.0] {
-        let window = Sigma::new(sigma);
+        let window = Sigma::new(sigma).unwrap();
         let map: Image<MonoF32> = corner_response_map(&square, &ShiTomasi, window);
         let params = CornerParams::try_new(window, 0.3 * max_response(&map), 3)
             .expect("calibrated threshold is finite and the radius is non-zero");

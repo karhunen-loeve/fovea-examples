@@ -27,7 +27,6 @@
 use std::fs;
 use std::time::Instant;
 
-use fovea::Sigma;
 use fovea::border::{Clamp, Skip};
 use fovea::features::detect::{
     CornerParams, FastParams, SegmentTest, ShiTomasi, corner_response_map, detect_corners, fast,
@@ -36,6 +35,7 @@ use fovea::features::detect::{
 use fovea::features::{Corner, HasPosition, HasResponse, retain_top_n};
 use fovea::image::{Image, ImageView, ImageViewMut};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
+use fovea::sigma;
 use fovea::transform::{SrgbGamma, convert_image};
 use fovea_display::{AutoContrast, DebugDisplay, Identity, LinearToDisplay};
 use fovea_io::jpeg::{self, JpegImage};
@@ -79,8 +79,8 @@ fn main() {
     let nms_radius = 6;
     let keep = 200;
 
-    let test = SegmentTest::new(threshold, arc_length);
-    let params = FastParams::new(test, nms_radius);
+    let test = SegmentTest::new(threshold, arc_length).unwrap();
+    let params = FastParams::new(test, nms_radius).unwrap();
     println!(
         "FAST-{arc_length}, t = {threshold} ({:.0} % contrast), nms radius = {nms_radius}",
         threshold * 100.0,
@@ -116,7 +116,7 @@ fn main() {
     // precisely because the synthetic intuition does not transfer.
     println!("\narc length sweep (t = {threshold}):");
     for n in 9..=12 {
-        let sweep = FastParams::new(SegmentTest::new(threshold, n), nms_radius);
+        let sweep = FastParams::new(SegmentTest::new(threshold, n).unwrap(), nms_radius).unwrap();
         println!("  FAST-{n}: {} corners", fast(&linear, sweep, &Skip).len());
     }
 
@@ -136,7 +136,7 @@ fn main() {
     );
 
     // ── 5. Against the structure tensor, on the same frame ────────────────────
-    let window = Sigma::new(1.4);
+    let window = sigma!(1.4);
     let shi_map: Image<MonoF32> = corner_response_map(&linear, &ShiTomasi, window);
     let shi_params = CornerParams::try_new(window, 0.05 * max_response(&shi_map), nms_radius)
         .expect("calibrated threshold is finite and the radius is non-zero");
@@ -260,7 +260,7 @@ fn report_saturation() {
 
     println!("\nlocalization on a synthetic square (true corners at 10/21):");
     for threshold in [0.05_f32, 0.2, 0.5, 0.9] {
-        let params = FastParams::new(SegmentTest::new(threshold, 9), 3);
+        let params = FastParams::new(SegmentTest::new(threshold, 9).unwrap(), 3).unwrap();
         let corners = fast(&square, params, &Skip);
         let reported: Vec<(i64, i64)> = corners
             .iter()
@@ -270,7 +270,7 @@ fn report_saturation() {
     }
 
     // The tied cluster behind those numbers, for the top-left corner.
-    let scores = fast_score_map(&square, SegmentTest::new(0.1, 9), &Skip);
+    let scores = fast_score_map(&square, SegmentTest::new(0.1, 9).unwrap(), &Skip);
     let tied: Vec<(usize, usize)> = (9..14)
         .flat_map(|y| (9..14).map(move |x| (x, y)))
         .filter(|&(x, y)| scores.pixel_at(x, y).0 > 0.0)

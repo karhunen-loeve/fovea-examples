@@ -81,8 +81,10 @@ fn main() {
     // ── 4. Three masks from one function ──────────────────────────────────────
     // Equal thresholds collapse the weak band: every kept component must
     // already contain a `>= t` pixel, so the result is a plain threshold at t.
-    let strong_only = hysteresis_threshold(&magnitude, HysteresisThresholds::new(high, high));
-    let low_only = hysteresis_threshold(&magnitude, HysteresisThresholds::new(low, low));
+    let strong_pair = HysteresisThresholds::try_new(high, high).unwrap();
+    let low_pair = HysteresisThresholds::try_new(low, low).unwrap();
+    let strong_only = hysteresis_threshold(&magnitude, strong_pair);
+    let low_only = hysteresis_threshold(&magnitude, low_pair);
     let hysteresis = hysteresis_threshold(&magnitude, thresholds);
 
     println!(

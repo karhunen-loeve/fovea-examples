@@ -35,13 +35,14 @@ use fovea::analyze::histogram::otsu_binary_mask;
 use fovea::analyze::threshold::{Bias, adaptive_threshold};
 use fovea::image::{BinaryImage, Image, ImageView, RasterImage};
 use fovea::pixel::{Mono8, Mono32, Mono64, SrgbMono8};
+use fovea::window;
 use fovea_display::{DebugDisplay, Identity, LinearToDisplay};
 use fovea_io::jpeg::{self, JpegImage};
 
 /// Local window side length. Roughly the scale of the structure to
-/// separate from its background. `OddWindowSide::new` is a `const fn`, so an
+/// separate from its background. `window!` is an inline `const` block, so an
 /// even side length here is a **compile** error, not a runtime one.
-const WINDOW: OddWindowSide = OddWindowSide::new(31);
+const WINDOW: OddWindowSide = window!(31);
 /// Bias on the local mean. Positive lifts the threshold's *acceptance*
 /// (foreground = `pixel > local_mean − bias`), trimming faint noise just
 /// above the local average.
