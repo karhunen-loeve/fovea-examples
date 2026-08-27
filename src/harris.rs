@@ -32,7 +32,7 @@ use fovea::features::detect::{
     CornerParams, ShiTomasi, StructureTensor, corner_peaks, corner_response_map, detect_corners,
 };
 use fovea::features::{Corner, HasPosition, HasResponse, retain_top_n};
-use fovea::image::{Image, ImageView, ImageViewMut};
+use fovea::image::{Image, ImageView};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
 use fovea::transform::{SrgbGamma, convert_image, scharr_x, scharr_y};
 use fovea::{harris, sigma};
@@ -133,8 +133,8 @@ fn main() {
     report_localization_drift();
 
     // ── Display ───────────────────────────────────────────────────────────────
-    // Corners are drawn by hand: the crate has no drawing primitives yet, so
-    // the marker loop below is the example's own, not an API demonstration.
+    // Corners are marked with `fovea::draw::Crosshair`, which shipped after
+    // this example was first written; the markers are an API demonstration.
     let gamma: Image<SrgbMono8> = convert_image(&linear, SrgbGamma);
     let harris_overlay = overlay_corners(&gamma, &harris_corners, Srgb8::new(255, 40, 40));
     let shi_overlay = overlay_corners(&gamma, &shi_corners, Srgb8::new(40, 200, 255));
@@ -181,27 +181,26 @@ fn max_response(map: &Image<MonoF32>) -> f32 {
 
 /// Draw a 9-pixel cross at every corner, on a colour copy of the image.
 ///
-/// Hand-rolled on purpose: drawing primitives are not in the crate yet, so
-/// this is example scaffolding rather than an API being demonstrated.
+/// Uses `fovea::draw::Crosshair`, so this is the crate's drawing API rather
+/// than example scaffolding. It was hand-rolled until `fovea::draw` shipped.
 fn overlay_corners(base: &Image<SrgbMono8>, corners: &[Corner], colour: Srgb8) -> Image<Srgb8> {
-    let (w, h) = (base.width(), base.height());
-    let mut out: Image<Srgb8> = Image::generate(w, h, |x, y| {
+    use fovea::draw::{Crosshair, Drawable};
+
+    let mut out: Image<Srgb8> = Image::generate(base.width(), base.height(), |x, y| {
         let v = base.pixel_at(x, y).0.0;
         Srgb8::new(v, v, v)
     });
 
     for corner in corners {
-        let p = corner.position();
         // Positions are `f64` in the base-image frame; these detections are
         // pixel-centred, so rounding is exact here.
-        let (cx, cy) = (p.x.round() as isize, p.y.round() as isize);
-        for d in -4_isize..=4 {
-            for (x, y) in [(cx + d, cy), (cx, cy + d)] {
-                if (0..w as isize).contains(&x) && (0..h as isize).contains(&y) {
-                    *out.pixel_at_mut(x as usize, y as usize) = colour;
-                }
-            }
+        let p = corner.position();
+        Crosshair {
+            center: (p.x.round() as i32, p.y.round() as i32),
+            arm_length: 4,
+            color: colour,
         }
+        .draw_into(&mut out);
     }
     out
 }

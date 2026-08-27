@@ -33,7 +33,7 @@ use fovea::features::detect::{
     fast_score_at, fast_score_map,
 };
 use fovea::features::{Corner, HasPosition, HasResponse, retain_top_n};
-use fovea::image::{Image, ImageView, ImageViewMut};
+use fovea::image::{Image, ImageView};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
 use fovea::sigma;
 use fovea::transform::{SrgbGamma, convert_image};
@@ -218,25 +218,26 @@ fn agreement(a: &[Corner], b: &[Corner], tolerance: f64) -> usize {
 
 /// Draw a 9-pixel cross at every corner, on a colour copy of the image.
 ///
-/// Hand-rolled on purpose: drawing primitives are not in the crate yet, so
-/// this is example scaffolding rather than an API being demonstrated.
+/// Uses `fovea::draw::Crosshair`, so this is the crate's drawing API rather
+/// than example scaffolding. It was hand-rolled until `fovea::draw` shipped.
 fn overlay_corners(base: &Image<SrgbMono8>, corners: &[Corner], colour: Srgb8) -> Image<Srgb8> {
-    let (w, h) = (base.width(), base.height());
-    let mut out: Image<Srgb8> = Image::generate(w, h, |x, y| {
+    use fovea::draw::{Crosshair, Drawable};
+
+    let mut out: Image<Srgb8> = Image::generate(base.width(), base.height(), |x, y| {
         let v = base.pixel_at(x, y).0.0;
         Srgb8::new(v, v, v)
     });
 
     for corner in corners {
+        // Positions are `f64` in the base-image frame; these detections are
+        // pixel-centred, so rounding is exact here.
         let p = corner.position();
-        let (cx, cy) = (p.x.round() as isize, p.y.round() as isize);
-        for d in -4_isize..=4 {
-            for (x, y) in [(cx + d, cy), (cx, cy + d)] {
-                if (0..w as isize).contains(&x) && (0..h as isize).contains(&y) {
-                    *out.pixel_at_mut(x as usize, y as usize) = colour;
-                }
-            }
+        Crosshair {
+            center: (p.x.round() as i32, p.y.round() as i32),
+            arm_length: 4,
+            color: colour,
         }
+        .draw_into(&mut out);
     }
     out
 }

@@ -91,3 +91,15 @@ path = "src/show_histogram_consumers.rs"
 [[bin]]
 name = "tile_flip_rotate"
 path = "src/tile_flip_rotate.rs"
+
+[[bin]]
+name = "contours"
+path = "src/contours.rs"
+
+[[bin]]
+name = "pyramid"
+path = "src/pyramid.rs"
+
+[[bin]]
+name = "demosaic"
+path = "src/demosaic.rs"
