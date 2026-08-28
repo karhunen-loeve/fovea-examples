@@ -234,7 +234,7 @@ fn overlay_corners(base: &Image<SrgbMono8>, corners: &[Corner], colour: Srgb8) -
         // pixel-centred, so rounding is exact here.
         let p = corner.position();
         Crosshair {
-            center: (p.x.round() as i32, p.y.round() as i32),
+            center: (p.x.round() as i32, p.y.round() as i32).into(),
             arm_length: 4,
             color: colour,
         }

@@ -41,7 +41,7 @@ use fovea::analyze::contours::{
 use fovea::draw::{Drawable, Polyline};
 use fovea::image::{Image, ImageView};
 use fovea::pixel::{Label32, Srgb8};
-use fovea::{Coordinate, Tolerance, tolerance};
+use fovea::{Coordinate, CoordinateI32, Tolerance, tolerance};
 use fovea_display::{DebugDisplay, Identity};
 use fovea_io::jpeg::{self, JpegImage};
 
@@ -367,8 +367,11 @@ fn draw_contour(image: &mut Image<Srgb8>, contour: &Contour, color: Srgb8) {
 
 /// `Coordinate` is an unsigned grid position; `Polyline` takes signed
 /// vertices because a shape may legitimately extend off-image.
-fn to_points(points: &[Coordinate]) -> Vec<(i32, i32)> {
-    points.iter().map(|p| (p.x as i32, p.y as i32)).collect()
+fn to_points(points: &[Coordinate]) -> Vec<CoordinateI32> {
+    points
+        .iter()
+        .map(|&p| CoordinateI32::try_from(p).expect("contour positions fit i32"))
+        .collect()
 }
 
 /// Descriptors that would divide by zero return `None` rather than `NaN`;

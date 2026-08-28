@@ -30,7 +30,7 @@ use fovea::features::detect::{
     CornerParams, NmsRadius, ShiTomasi, corner_response_map, detect_corners,
 };
 use fovea::features::{HasPosition, retain_top_n};
-use fovea::image::{Decimated, GaussianPyramid, Image, ImageView, ScaledImage};
+use fovea::image::{Decimated, GaussianPyramid, Image, ImageView, OriginOffset, ScaledImage};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
 use fovea::transform::{Gaussian, PyramidMethod, SrgbGamma, convert_image, pyr_down, pyr_up};
 use fovea::{CoordinateF64, PixelDistance, Sigma, sigma};
@@ -126,7 +126,7 @@ fn main() {
     let level = ScaledImage::new(
         coarse,
         distance,
-        CoordinateF64::new(0.0, 0.0),
+        OriginOffset::ZERO,
         effective_sigma(level_index),
     );
 
@@ -288,7 +288,7 @@ fn report_lift_cost() {
         let level = ScaledImage::new(
             image.clone(),
             distance,
-            CoordinateF64::new(0.0, 0.0),
+            OriginOffset::ZERO,
             effective_sigma(index),
         );
         let lifted = level.to_base(top_left.position());
@@ -327,7 +327,7 @@ fn overlay_positions(base: &Image<SrgbMono8>, positions: &[CoordinateF64]) -> Im
     });
     for p in positions {
         Crosshair {
-            center: (p.x.round() as i32, p.y.round() as i32),
+            center: (p.x.round() as i32, p.y.round() as i32).into(),
             arm_length: 6,
             color: Srgb8::new(255, 60, 60),
         }
