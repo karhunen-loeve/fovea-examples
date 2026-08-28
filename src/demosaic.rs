@@ -79,7 +79,10 @@ fn main() {
     // in linear light. That is the honest frame for an artifact you are
     // looking at rather than integrating.
     println!("\nmean absolute error against the original, in code values 0-255:");
-    println!("  {:<20} {:>7} {:>7} {:>7} {:>9}", "", "red", "green", "blue", "all");
+    println!(
+        "  {:<20} {:>7} {:>7} {:>7} {:>9}",
+        "", "red", "green", "blue", "all"
+    );
     for (name, image) in [("bilinear", &bilinear), ("Malvar-He-Cutler", &malvar)] {
         let (r, g, b) = channel_mae(&truth, image);
         println!(
@@ -266,9 +269,7 @@ fn raw_as_grey(raw: &Image<BayerRggb8>) -> Image<Srgb8> {
 fn amplified_difference(a: &Image<Rgb8>, b: &Image<Rgb8>, gain: i32) -> Image<Srgb8> {
     Image::generate(a.width(), a.height(), |x, y| {
         let (pa, pb) = (a.pixel_at(x, y), b.pixel_at(x, y));
-        let d = |u: u8, v: u8| {
-            ((i32::from(u) - i32::from(v)).abs() * gain).min(255) as u8
-        };
+        let d = |u: u8, v: u8| ((i32::from(u) - i32::from(v)).abs() * gain).min(255) as u8;
         Srgb8::new(d(pa.r.0, pb.r.0), d(pa.g.0, pb.g.0), d(pa.b.0, pb.b.0))
     })
 }

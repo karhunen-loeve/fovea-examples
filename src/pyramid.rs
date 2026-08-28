@@ -50,7 +50,11 @@ fn main() {
         panic!("expected SrgbMono8, got a different pixel format");
     };
     let base: Image<MonoF32> = convert_image(&mono, SrgbGamma);
-    println!("Terrace {}×{} → MonoF32 linear", base.width(), base.height());
+    println!(
+        "Terrace {}×{} → MonoF32 linear",
+        base.width(),
+        base.height()
+    );
 
     // ── 1. Build ─────────────────────────────────────────────────────────────
     // Ask for six levels. Whether six arrive is the image's business: the
@@ -71,7 +75,10 @@ fn main() {
             1u32 << i,
         );
     }
-    let total: usize = pyramid.iter().map(|l| l.size().width * l.size().height).sum();
+    let total: usize = pyramid
+        .iter()
+        .map(|l| l.size().width * l.size().height)
+        .sum();
     println!(
         "  all levels together: {total} px, {:.2}× the base image",
         total as f64 / (base.width() * base.height()) as f64,
@@ -137,7 +144,10 @@ fn main() {
         corners.len(),
     );
 
-    let lifted: Vec<CoordinateF64> = corners.iter().map(|c| level.to_base(c.position())).collect();
+    let lifted: Vec<CoordinateF64> = corners
+        .iter()
+        .map(|c| level.to_base(c.position()))
+        .collect();
     if let (Some(first), Some(base_pos)) = (corners.first(), lifted.first()) {
         let p = first.position();
         println!(
@@ -147,15 +157,15 @@ fn main() {
     }
 
     // ── 5. The inverse, and that it is exact ─────────────────────────────────
-    let round_trip_exact = corners
-        .iter()
-        .zip(&lifted)
-        .all(|(c, base_pos)| {
-            let back = level.to_local(*base_pos);
-            let p = c.position();
-            (back.x - p.x).abs() < 1e-9 && (back.y - p.y).abs() < 1e-9
-        });
-    println!("  to_base → to_local round trip exact for all {} corners: {round_trip_exact}", corners.len());
+    let round_trip_exact = corners.iter().zip(&lifted).all(|(c, base_pos)| {
+        let back = level.to_local(*base_pos);
+        let p = c.position();
+        (back.x - p.x).abs() < 1e-9 && (back.y - p.y).abs() < 1e-9
+    });
+    println!(
+        "  to_base → to_local round trip exact for all {} corners: {round_trip_exact}",
+        corners.len()
+    );
     println!(
         "  Both directions are needed and they are not the same job: detection\n\
          lifts *out* of a level, while a descriptor reading a patch around a\n\
@@ -172,7 +182,10 @@ fn main() {
     });
     let levels: Vec<Image<MonoF32>> = pyramid.iter().cloned().collect();
 
-    println!("\nOpening {} windows — press any key to close all", levels.len() + 2);
+    println!(
+        "\nOpening {} windows — press any key to close all",
+        levels.len() + 2
+    );
     DebugDisplay::run(move |ctx| {
         for (i, level) in levels.iter().enumerate() {
             ctx.show(

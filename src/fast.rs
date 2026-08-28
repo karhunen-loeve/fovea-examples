@@ -262,13 +262,19 @@ fn report_saturation() {
 
     println!("\nlocalization on a synthetic square (true corners at 10/21):");
     for threshold in [0.05_f32, 0.2, 0.5, 0.9] {
-        let params = FastParams::new(SegmentTest::new(threshold, 9).unwrap(), NmsRadius::new(3).unwrap());
+        let params = FastParams::new(
+            SegmentTest::new(threshold, 9).unwrap(),
+            NmsRadius::new(3).unwrap(),
+        );
         let corners = fast(&square, params, &Skip);
         let reported: Vec<(i64, i64)> = corners
             .iter()
             .map(|c| (c.position().x as i64, c.position().y as i64))
             .collect();
-        println!("  t = {threshold:.2}: {} corners at {reported:?}", corners.len());
+        println!(
+            "  t = {threshold:.2}: {} corners at {reported:?}",
+            corners.len()
+        );
     }
 
     // The tied cluster behind those numbers, for the top-left corner.

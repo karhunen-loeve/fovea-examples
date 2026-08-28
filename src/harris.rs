@@ -125,7 +125,11 @@ fn main() {
     let gy = scharr_y(&linear, &Clamp);
     let tensor = StructureTensor::from_gradients(&gx, &gy, window).expect("gx and gy share a size");
     let scharr_map = tensor.response(harris);
-    let scharr_corners = corner_peaks(&scharr_map, 0.02 * max_response(&scharr_map), nms_radius.get());
+    let scharr_corners = corner_peaks(
+        &scharr_map,
+        0.02 * max_response(&scharr_map),
+        nms_radius.get(),
+    );
     println!(
         "same pipeline with a Scharr gradient: {} corners above threshold",
         scharr_corners.len(),
@@ -230,8 +234,9 @@ fn report_localization_drift() {
     for sigma in [0.8_f32, 1.0, 1.4, 2.0] {
         let window = Sigma::new(sigma).unwrap();
         let map: Image<MonoF32> = corner_response_map(&square, ShiTomasi, window);
-        let params = CornerParams::try_new(window, 0.3 * max_response(&map), NmsRadius::new(3).unwrap())
-            .expect("calibrated threshold is finite and the radius is non-zero");
+        let params =
+            CornerParams::try_new(window, 0.3 * max_response(&map), NmsRadius::new(3).unwrap())
+                .expect("calibrated threshold is finite and the radius is non-zero");
         let corners = detect_corners(&square, ShiTomasi, params);
         let top_left = corners
             .iter()

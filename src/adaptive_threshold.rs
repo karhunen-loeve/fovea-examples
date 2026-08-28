@@ -30,12 +30,12 @@
 
 use std::fs;
 
-use fovea::{Error, OddWindowSide};
 use fovea::analyze::histogram::otsu_binary_mask;
 use fovea::analyze::threshold::{Bias, adaptive_threshold};
 use fovea::image::{BinaryImage, Image, ImageView, RasterImage};
 use fovea::pixel::{Mono8, Mono32, Mono64, SrgbMono8};
 use fovea::window;
+use fovea::{Error, OddWindowSide};
 use fovea_display::{DebugDisplay, Identity, LinearToDisplay};
 use fovea_io::jpeg::{self, JpegImage};
 

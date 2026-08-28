@@ -79,8 +79,8 @@ fn main() {
     // component that encloses it, and enclosure is a labeling question.
     // 8-connectivity for the foreground implies 4-connectivity for the
     // background, which is what makes the two consistent.
-    let (labeling, hierarchy) =
-        extract_contours::<Label32, Connectivity8>(&scene).expect("the scene is a valid bool image");
+    let (labeling, hierarchy) = extract_contours::<Label32, Connectivity8>(&scene)
+        .expect("the scene is a valid bool image");
     println!(
         "components: {} (labeling reports {})",
         hierarchy.components().len(),
@@ -88,7 +88,10 @@ fn main() {
     );
 
     // ── 3. Descriptors ───────────────────────────────────────────────────────
-    println!("\n{:<10} {:>8} {:>10} {:>7} {:>7} {:>6} {:>6}", "shape", "area", "perimeter", "circ", "solid", "holes", "euler");
+    println!(
+        "\n{:<10} {:>8} {:>10} {:>7} {:>7} {:>6} {:>6}",
+        "shape", "area", "perimeter", "circ", "solid", "holes", "euler"
+    );
     for (name, component) in NAMES.iter().zip(hierarchy.components()) {
         let outer = component.outer();
         println!(
