@@ -29,7 +29,8 @@ use std::fs;
 use fovea::Sigma;
 use fovea::border::Clamp;
 use fovea::features::detect::{
-    CornerParams, ShiTomasi, StructureTensor, corner_peaks, corner_response_map, detect_corners,
+    CornerParams, NmsRadius, ShiTomasi, StructureTensor, corner_peaks, corner_response_map,
+    detect_corners,
 };
 use fovea::features::{Corner, HasPosition, HasResponse, retain_top_n};
 use fovea::image::{Image, ImageView};
@@ -62,12 +63,13 @@ fn main() {
     // rejects the two silent failure modes, k ≤ 0 (edges become rewards) and
     // k ≥ 0.25 (nothing can ever fire).
     let window = sigma!(1.4);
-    let nms_radius = 6;
+    let nms_radius = NmsRadius::new(6).unwrap();
     let keep = 200;
     let harris = harris!(0.04);
     println!(
-        "window σ = {}, nms radius = {nms_radius}, k = {}",
+        "window σ = {}, nms radius = {}, k = {}",
         window.get(),
+        nms_radius.get(),
         harris.k(),
     );
 
@@ -79,8 +81,8 @@ fn main() {
     // fourth power of contrast and Shi-Tomasi a square, so 3 % of one map's
     // peak is not 3 % of the other's. Calibrating per map is the only recipe
     // that survives a change of measure, operator, pixel type or σ.
-    let harris_map: Image<MonoF32> = corner_response_map(&linear, &harris, window);
-    let shi_map: Image<MonoF32> = corner_response_map(&linear, &ShiTomasi, window);
+    let harris_map: Image<MonoF32> = corner_response_map(&linear, harris, window);
+    let shi_map: Image<MonoF32> = corner_response_map(&linear, ShiTomasi, window);
     let harris_peak = max_response(&harris_map);
     let shi_peak = max_response(&shi_map);
     println!("peak response: Harris {harris_peak:.4}, Shi-Tomasi {shi_peak:.4}");
@@ -94,8 +96,8 @@ fn main() {
     // `detect_corners` returns every peak above the threshold, in raster
     // order. Ranking is a separate, named step, so "the strongest 200" is
     // reproducible: `retain_top_n` breaks response ties on (y, x).
-    let mut harris_corners = detect_corners(&linear, &harris, harris_params);
-    let mut shi_corners = detect_corners(&linear, &ShiTomasi, shi_params);
+    let mut harris_corners = detect_corners(&linear, harris, harris_params);
+    let mut shi_corners = detect_corners(&linear, ShiTomasi, shi_params);
     println!(
         "above threshold: Harris {}, Shi-Tomasi {}",
         harris_corners.len(),
@@ -122,8 +124,8 @@ fn main() {
     let gx = scharr_x(&linear, &Clamp);
     let gy = scharr_y(&linear, &Clamp);
     let tensor = StructureTensor::from_gradients(&gx, &gy, window).expect("gx and gy share a size");
-    let scharr_map = tensor.response(&harris);
-    let scharr_corners = corner_peaks(&scharr_map, 0.02 * max_response(&scharr_map), nms_radius);
+    let scharr_map = tensor.response(harris);
+    let scharr_corners = corner_peaks(&scharr_map, 0.02 * max_response(&scharr_map), nms_radius.get());
     println!(
         "same pipeline with a Scharr gradient: {} corners above threshold",
         scharr_corners.len(),
@@ -227,10 +229,10 @@ fn report_localization_drift() {
     println!("\nlocalization on a synthetic square (true corner at 7.5, 7.5):");
     for sigma in [0.8_f32, 1.0, 1.4, 2.0] {
         let window = Sigma::new(sigma).unwrap();
-        let map: Image<MonoF32> = corner_response_map(&square, &ShiTomasi, window);
-        let params = CornerParams::try_new(window, 0.3 * max_response(&map), 3)
+        let map: Image<MonoF32> = corner_response_map(&square, ShiTomasi, window);
+        let params = CornerParams::try_new(window, 0.3 * max_response(&map), NmsRadius::new(3).unwrap())
             .expect("calibrated threshold is finite and the radius is non-zero");
-        let corners = detect_corners(&square, &ShiTomasi, params);
+        let corners = detect_corners(&square, ShiTomasi, params);
         let top_left = corners
             .iter()
             .min_by(|a, b| {

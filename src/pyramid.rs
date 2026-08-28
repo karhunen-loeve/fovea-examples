@@ -26,7 +26,9 @@
 
 use std::fs;
 
-use fovea::features::detect::{CornerParams, ShiTomasi, corner_response_map, detect_corners};
+use fovea::features::detect::{
+    CornerParams, NmsRadius, ShiTomasi, corner_response_map, detect_corners,
+};
 use fovea::features::{HasPosition, retain_top_n};
 use fovea::image::{Decimated, GaussianPyramid, Image, ImageView, ScaledImage};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
@@ -122,11 +124,11 @@ fn main() {
     );
 
     let window = sigma!(1.4);
-    let map: Image<MonoF32> = corner_response_map(level.image(), &ShiTomasi, window);
+    let map: Image<MonoF32> = corner_response_map(level.image(), ShiTomasi, window);
     let peak = max_response(&map);
-    let params = CornerParams::try_new(window, 0.05 * peak, 4)
+    let params = CornerParams::try_new(window, 0.05 * peak, NmsRadius::new(4).unwrap())
         .expect("a calibrated threshold is finite and the radius is non-zero");
-    let mut corners = detect_corners(level.image(), &ShiTomasi, params);
+    let mut corners = detect_corners(level.image(), ShiTomasi, params);
     retain_top_n(&mut corners, 60);
     println!(
         "\ndetected on level {level_index} ({}×{}): {} corners kept",
@@ -256,11 +258,11 @@ fn report_lift_cost() {
             println!("  level {index}: too small to detect on, skipped");
             continue;
         }
-        let map: Image<MonoF32> = corner_response_map(image, &ShiTomasi, window);
+        let map: Image<MonoF32> = corner_response_map(image, ShiTomasi, window);
         let peak = max_response(&map);
-        let params = CornerParams::try_new(window, 0.25 * peak, 2)
+        let params = CornerParams::try_new(window, 0.25 * peak, NmsRadius::new(2).unwrap())
             .expect("a calibrated threshold is finite and the radius is non-zero");
-        let corners = detect_corners(image, &ShiTomasi, params);
+        let corners = detect_corners(image, ShiTomasi, params);
         let Some(top_left) = corners.iter().min_by(|a, b| {
             let (pa, pb) = (a.position(), b.position());
             (pa.x + pa.y).total_cmp(&(pb.x + pb.y))

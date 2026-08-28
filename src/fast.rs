@@ -29,8 +29,8 @@ use std::time::Instant;
 
 use fovea::border::{Clamp, Skip};
 use fovea::features::detect::{
-    CornerParams, FastParams, SegmentTest, ShiTomasi, corner_response_map, detect_corners, fast,
-    fast_score_at, fast_score_map,
+    CornerParams, FastParams, NmsRadius, SegmentTest, ShiTomasi, corner_response_map,
+    detect_corners, fast, fast_score_at, fast_score_map,
 };
 use fovea::features::{Corner, HasPosition, HasResponse, retain_top_n};
 use fovea::image::{Image, ImageView};
@@ -76,14 +76,15 @@ fn main() {
     // which is the ergonomic difference from the structure-tensor family.
     let threshold = 0.08;
     let arc_length = 9;
-    let nms_radius = 6;
+    let nms_radius = NmsRadius::new(6).unwrap();
     let keep = 200;
 
     let test = SegmentTest::new(threshold, arc_length).unwrap();
-    let params = FastParams::new(test, nms_radius).unwrap();
+    let params = FastParams::new(test, nms_radius);
     println!(
-        "FAST-{arc_length}, t = {threshold} ({:.0} % contrast), nms radius = {nms_radius}",
+        "FAST-{arc_length}, t = {threshold} ({:.0} % contrast), nms radius = {}",
         threshold * 100.0,
+        nms_radius.get(),
     );
 
     let started = Instant::now();
@@ -116,7 +117,7 @@ fn main() {
     // precisely because the synthetic intuition does not transfer.
     println!("\narc length sweep (t = {threshold}):");
     for n in 9..=12 {
-        let sweep = FastParams::new(SegmentTest::new(threshold, n).unwrap(), nms_radius).unwrap();
+        let sweep = FastParams::new(SegmentTest::new(threshold, n).unwrap(), nms_radius);
         println!("  FAST-{n}: {} corners", fast(&linear, sweep, &Skip).len());
     }
 
@@ -137,12 +138,12 @@ fn main() {
 
     // ── 5. Against the structure tensor, on the same frame ────────────────────
     let window = sigma!(1.4);
-    let shi_map: Image<MonoF32> = corner_response_map(&linear, &ShiTomasi, window);
+    let shi_map: Image<MonoF32> = corner_response_map(&linear, ShiTomasi, window);
     let shi_params = CornerParams::try_new(window, 0.05 * max_response(&shi_map), nms_radius)
         .expect("calibrated threshold is finite and the radius is non-zero");
 
     let started = Instant::now();
-    let mut shi_corners = detect_corners(&linear, &ShiTomasi, shi_params);
+    let mut shi_corners = detect_corners(&linear, ShiTomasi, shi_params);
     let shi_elapsed = started.elapsed();
     retain_top_n(&mut shi_corners, keep);
 
@@ -261,7 +262,7 @@ fn report_saturation() {
 
     println!("\nlocalization on a synthetic square (true corners at 10/21):");
     for threshold in [0.05_f32, 0.2, 0.5, 0.9] {
-        let params = FastParams::new(SegmentTest::new(threshold, 9).unwrap(), 3).unwrap();
+        let params = FastParams::new(SegmentTest::new(threshold, 9).unwrap(), NmsRadius::new(3).unwrap());
         let corners = fast(&square, params, &Skip);
         let reported: Vec<(i64, i64)> = corners
             .iter()
