@@ -16,6 +16,11 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | See convolution, gradient magnitude, and overlay together | `cargo run --bin edge_overlay` |
 | Segment edges with a double (hysteresis) threshold | `cargo run --bin hysteresis_threshold` |
 | Detect edges with the full Canny pipeline | `cargo run --bin canny` |
+| Find corners with Harris and Shi-Tomasi | `cargo run --bin harris` |
+| Find corners with the FAST segment test | `cargo run --bin fast` |
+| Trace contours, read hole hierarchy and shape descriptors | `cargo run --bin contours` |
+| Build an image pyramid and lift a coarse detection back | `cargo run --bin pyramid` |
+| Demosaic a Bayer mosaic and white-balance the raw data | `cargo run --bin demosaic` |
 | Inspect display strategies | `cargo run --bin show_srgb` and `cargo run --bin show_linear` |
 | See ROI display | `cargo run --bin show_roi` |
 
@@ -37,6 +42,11 @@ cargo build --release  # all examples, optimised
 | `edge_overlay`  | Sobel edge detection + gradient magnitude + `LinearCombine` overlay |
 | `hysteresis_threshold` | Double-threshold edge segmentation (`hysteresis_threshold`) on a gradient-magnitude image |
 | `canny`         | Full Canny edge detector (`analyze::edge::canny`) with every intermediate stage displayed |
+| `harris`        | Harris and Shi-Tomasi corner detection (`features::detect`), calibrated thresholds, and the localization drift |
+| `fast`          | FAST segment-test corner detection (`features::detect::fast`), the arc-length sweep, the border policy as a choice, and a timed comparison against Shi-Tomasi |
+| `contours`      | Border tracing (`analyze::contours`), outer/hole hierarchy, Euler number, convex hull, Douglas-Peucker, and the staircase bias in circularity |
+| `pyramid`       | Gaussian pyramid (`image::pyramid` + `transform::pyramid`), the `pyr_up`/`pyr_down` residual, and lifting a coarse detection into base coordinates |
+| `demosaic`      | Bayer CFA types (`pixel::bayer`), `demosaic` with two strategies, `white_balance` on the mosaic, and the artifact trade-off measured both ways |
 | `perona_malik`  | Perona-Malik anisotropic diffusion filter CLI — PNG, JPEG, BMP       |
 | `show_srgb`     | Load a JPEG and display it with `Identity` strategy |
 | `show_mono16`   | Synthetic Mono16 gradient displayed with `AutoContrast` |
@@ -100,13 +110,16 @@ Terrace.jpg (SrgbMono8)
   → SrgbGamma          → Image<f32>  (linear light, [0, 1])
   → sobel_x / sobel_y  → Image<f32>  (signed gradients)
   → Magnitude          → Image<f32>  (√(gx² + gy²), edge map)
-  → hysteresis_threshold(low, high)  → BinaryImage  (kept edges)
+  → hysteresis_threshold(thresholds) → BinaryImage  (kept edges)
 ```
 
 A weak pixel (`value >= low`) survives only if its 8-connected component
-contains a strong pixel (`value >= high`). The example derives `low` / `high`
-as fractions of the peak magnitude, then shows three masks built from the
-**same** function to make the trade-off visible:
+contains a strong pixel (`value >= high`). The pair travels as one
+`HysteresisThresholds` value, since `low <= high` is a relation neither number
+carries alone. The example derives `low` / `high` as fractions of the peak
+magnitude, so it uses `HysteresisThresholds::try_new`, the constructor for
+computed values. It then shows three masks built from the **same** function to
+make the trade-off visible:
 
 - **strong only** (`low == high`): clean, but strong edges fragment.
 - **low only** (`low == low`): connected, but noisy.
@@ -135,13 +148,13 @@ Terrace.jpg (SrgbMono8)
   → scharr_x / scharr_y          → Image<f32>  (signed gradients)
   → gradient_magnitude / _direction → Image<f32>  (edge strength + angle)
   → non_maximum_suppression      → Image<f32>  (thinned ridge)
-  → hysteresis_threshold(low, high) → BinaryImage  (linked edges)
+  → hysteresis_threshold(thresholds) → BinaryImage  (linked edges)
 ```
 
-`sigma` is a true Gaussian standard deviation; `low` / `high` are absolute
-gradient-magnitude thresholds whose meaning is stable across `sigma` because
-the blur preserves brightness. The example asserts that the hand-built mask
-equals the one-call `canny(&linear, low, high, sigma)`.
+`sigma` is a true Gaussian standard deviation; `thresholds` carries the
+absolute gradient-magnitude pair, whose meaning is stable across `sigma`
+because the blur preserves brightness. The example asserts that the
+hand-built mask equals the one-call `canny(&linear, thresholds, sigma)`.
 
 ### Quick start
 
@@ -150,6 +163,302 @@ cargo run --bin canny
 ```
 
 Press any key or close any window to exit.
+
+---
+
+## `harris`
+
+Demonstrates `features::detect` — Harris and Shi-Tomasi as two **response
+strategies over one pipeline**, not two detectors:
+
+```text
+Terrace.jpg (SrgbMono8)
+  → SrgbGamma                       → Image<MonoF32>  (linear light, [0, 1])
+  → sobel_x / sobel_y               → Image<MonoF32>  (signed gradients)
+  → StructureTensor(window σ)        → Sxx, Sxy, Syy   (windowed products)
+  → Harris | ShiTomasi              → Image<MonoF32>  (response map)
+  → corner_peaks(threshold, radius) → Vec<Corner>     (raster order)
+  → retain_top_n                    → the strongest N (deterministic)
+```
+
+Three things the example is really about:
+
+**The threshold cannot be guessed.** It is absolute, in the response map's own
+units, and those units carry the gradient operator's gain and the image
+contrast at the measure's own power — squared for Shi-Tomasi, *fourth* for
+Harris. The example calibrates against each map's own maximum and prints both
+peaks, which is why one uses 2 % and the other 5 % of it.
+
+**The operator is a choice.** After the one-call form, the example rebuilds the
+same detection over a `StructureTensor` built from **Scharr** gradients rather
+than the pinned Sobel, and prints both corner counts. Nothing had to be forked
+to do that.
+
+**The reported corner is not exactly the corner.** On a synthetic square with
+an exactly known corner, the example prints the detected position for four
+window sizes:
+
+```text
+localization on a synthetic square (true corner at 7.5, 7.5):
+  σ = 0.8: 4 corners, top-left at (8, 8), 0.71 px from truth
+  σ = 1.0: 4 corners, top-left at (8, 8), 0.71 px from truth
+  σ = 1.4: 4 corners, top-left at (9, 9), 2.12 px from truth
+  σ = 2.0: 4 corners, top-left at (9, 9), 2.12 px from truth
+```
+
+The window averages the two edges meeting at a corner, and that average is
+strongest slightly *inside* it — so a larger window is more noise-robust and
+less precisely localized. The bias is systematic rather than noisy, so it does
+not average away over frames. This is expected behaviour for every
+structure-tensor detector, and the reason sub-pixel refinement is a separate
+step from detection.
+
+Corner markers are drawn by the example itself: the crate has no drawing
+primitives yet, so the marker loop is scaffolding rather than an API being
+demonstrated.
+
+### Quick start
+
+```sh
+cargo run --bin harris
+```
+
+Press any key or close any window to exit.
+
+---
+
+## `fast`
+
+The other detector family in `features::detect`, on the same frame as
+`harris` so the two can be read against each other. FAST decides from **raw
+intensities on a 16-pixel ring**, not from a gradient:
+
+```text
+Terrace.jpg (SrgbMono8)
+  → SrgbGamma                       → Image<MonoF32>  (linear light, [0, 1])
+  → SegmentTest(t, arc_length)       → the test itself, validated once
+  → fast_score_map(.., &Skip)        → Image<MonoF32>  (score map)
+  → corner_peaks(t, radius)          → Vec<Corner>     (raster order)
+  → retain_top_n                     → the strongest N (deterministic)
+```
+
+Four things the example is really about:
+
+**The threshold *can* be guessed — that is the point.** It is an intensity
+difference on the image's own scale: `0.08` is eight per cent contrast here,
+and would be `20.0` for the same picture as `Mono8`. Nothing has to be
+calibrated against a response map first, which is the ergonomic difference
+from Harris.
+
+**The arc length matters far less on a photograph than on a test pattern.**
+A 90° corner leaves only 11 contiguous ring pixels on the outside, so FAST-12
+rejects every right angle in a synthetic square — all of them, not most. On
+Terrace the same change moves the count by about 8 %:
+
+```text
+arc length sweep (t = 0.08):
+  FAST-9: 2358 corners
+  FAST-10: 2285 corners
+  FAST-11: 2223 corners
+  FAST-12: 2163 corners
+```
+
+Natural corners are blobs, texture and junctions rather than clean wedges,
+and those clear long arcs too. The example prints this precisely because the
+synthetic intuition does not transfer.
+
+**The border is the crate's ordinary vocabulary.** `Skip` declines the
+3-pixel margin where the ring does not fit (a detection there would be built
+from invented samples); `Clamp` extends the image and reports them.
+`fast_score_at` puts the difference in its return type — `None` is "not
+scored", `Some(0.0)` is "scored, and not a corner".
+
+**The reported corner is not exactly the corner, for a different reason than
+Harris'.** On a synthetic square with exactly known corners at 10 and 21:
+
+```text
+localization on a synthetic square (true corners at 10/21):
+  t = 0.05: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  t = 0.20: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  t = 0.50: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  t = 0.90: 4 corners at [(10, 10), (19, 10), (10, 19), (21, 19)]
+  pixels tied at the full contrast around (10, 10): [(10, 10), (11, 10), (12, 10), (10, 11), (11, 11), (10, 12)]
+```
+
+No parameter moves those positions — unlike the structure tensor, whose peak
+walks inward as σ grows. What moves them off the corner instead is
+**saturation**: once an arc clears the threshold everywhere, six pixels around
+each corner reach the *identical* full contrast, and the peak stage's
+tie-break reports each tied cluster's raster-first member. For the top-left
+corner that is the corner; for the others it is up to two pixels along an
+edge. Both families therefore have a localization bias, by different
+mechanisms, and neither is fixable by tuning — which is the argument for a
+refinement step.
+
+The example also times both detectors on the same frame. Do not expect the
+segment test to win: it reads far less data, but the structure-tensor path
+spends its time in separable blurs that vectorize, while this one is a scalar
+per-pixel scan. The printed numbers are the honest current state, not the
+reputation.
+
+**Run this one with `--release`.** An unoptimised build is roughly 18× slower
+here and not by the same factor for both detectors, so the debug timings
+invite exactly the wrong conclusion. The example prints a warning if you
+forget.
+
+Corner markers are drawn by the example itself, as in `harris`.
+
+### Quick start
+
+```sh
+cargo run --release --bin fast
+```
+
+Press any key or close any window to exit.
+
+---
+
+## `contours`
+
+Demonstrates `analyze::contours` on a synthetic scene whose answers are known
+exactly, then on a photograph where they are not:
+
+```text
+bool image
+  → extract_contours::<Label32, Connectivity8>
+      → Labeling            (which pixel belongs to which component)
+      → ContourHierarchy    (one ComponentContour per component)
+          → outer()          → Contour   (the border chain)
+          → holes()          → [Contour] (derived from the labeling)
+  → area / perimeter / circularity / solidity / euler_number
+  → convex_hull, approximate_polygon, chain_code
+```
+
+Three things the example is really about:
+
+**The hierarchy is not decoration.** The scene contains a filled disc and an
+annulus, and they report the *same* area, perimeter, circularity and solidity,
+because an outer border is an outer border and these two shapes have the same
+one. Only the hole count and the Euler number tell them apart:
+
+```text
+shape          area  perimeter    circ   solid  holes  euler
+disc           2736     197.82   0.879   0.980      0      1
+annulus        2736     197.82   0.879   0.980      1      0
+square         3600     240.00   0.785   1.000      2     -1
+concave C      1844     242.51   0.394   0.687      0      1
+```
+
+**The traced chain has a staircase bias, and the crate does not hide it.** A
+perfect circle has circularity 1.0; the raw traced border of a rasterised disc
+reports 0.879, because tracing follows pixel centres and so overestimates the
+perimeter while getting the area right. Douglas-Peucker closes most of the gap,
+and the example prints three tolerances so the trade is visible. It also prints
+the part that is easy to miss: the gap does **not** close monotonically, and a
+tolerance tuned to push circularity toward 1.0 is fitting the metric rather than
+the shape.
+
+**Solidity is what separates concave from convex.** The concave C has almost the
+same area as the disc and a wildly different solidity (0.687 against 0.980),
+while circularity conflates "has a bite out of it" with "is elongated".
+
+The overlays use `fovea::draw::Polyline`, so the outlines are an API
+demonstration rather than example scaffolding.
+
+---
+
+## `pyramid`
+
+Demonstrates `image::pyramid` and `transform::pyramid`, and the one thing a
+pyramid is for: detecting on a small, cheap level and reporting the answer in
+full-resolution coordinates.
+
+```text
+Terrace.jpg (SrgbMono8)
+  → SrgbGamma                     → Image<MonoF32>
+  → Gaussian.build(max_depth)     → GaussianPyramid<MonoF32>
+  → ScaledImage::new(level, d, o, σ)   (state the sampling convention)
+  → detect_corners on the level   → Vec<Corner>  (level-local positions)
+  → Decimated::to_base            → base-image coordinates
+```
+
+Three things the example is really about:
+
+**`max_depth` is an upper bound, not a promise.** The build clamps when a level
+cannot shrink further, and `depth()` reports what actually happened. The example
+also prints that all levels together cost 1.33x the base image, which is the
+answer to "is a pyramid expensive".
+
+**Scale metadata is opt-in, and that is the point.** `Gaussian.build` produces
+plain `Image` levels that carry no geometry and pay nothing for it. Lifting a
+position needs the geometry, so the example wraps a level in a `ScaledImage` and
+*states* the convention rather than inferring it: `pyr_down` maps coarse pixel k
+to fine pixel 2k, so the origin offset is (0, 0) and the sampling distance is
+2^level. `to_base` and `to_local` round-trip exactly.
+
+**Detecting coarse costs accuracy, and the example measures how much.** On a
+synthetic square with an exactly known corner:
+
+```text
+cost of detecting coarse (true top-left corner at base 39.5, 39.5):
+  level 0 (128x128): local (41, 41) → base ( 41.0,  41.0), 2.12 px from truth, quantisation floor 0.71 px
+  level 1 ( 64x64 ): local (21, 21) → base ( 42.0,  42.0), 3.54 px from truth, quantisation floor 1.41 px
+  level 2 ( 32x32 ): local (11, 11) → base ( 44.0,  44.0), 6.36 px from truth, quantisation floor 2.83 px
+  level 3 ( 16x16 ): local (6, 6) → base ( 48.0,  48.0), 12.02 px from truth, quantisation floor 5.66 px
+```
+
+The error is worse than the quantisation floor at every level, and the gap is
+not the pyramid's fault: the structure-tensor peak drifts inward as its window
+grows, which the `harris` example measures on the same square. Two independent
+biases stack, and only one of them shrinks by detecting on a finer level.
+
+---
+
+## `demosaic`
+
+Demonstrates `pixel::bayer` and `transform::demosaic` on a mosaic built from a
+real colour image, so every reconstruction can be scored against a ground truth
+that a real raw file would not have:
+
+```text
+Mandrill.jpg (Srgb8)
+  → mosaic via BayerPattern::color_at   → Image<BayerRggb8>  (one channel per pixel)
+  → white_balance(BayerGains)           → Image<BayerRggb8>  (gains belong on the mosaic)
+  → demosaic(BayerBilinear)             → Image<Rgb8>
+  → demosaic(MalvarHeCutler)            → Image<Rgb8>
+```
+
+Three things the example is really about:
+
+**The pattern is read off the type.** `BayerRggb8::PATTERN` plus
+`BayerPattern::color_at(x, y)` is a `const fn` answer to "which colour is this
+pixel", so neither the mosaicking step nor the demosaic open-codes the tile.
+That is the difference between the CFA type family being independently testable
+and being an inert tag.
+
+**Depth and layout are enforced by the type.** `demosaic` returns
+`B::RgbOutput`, so `BayerRggb12` demosaics to `Rgb12` and asking for `Rgb8`
+instead does not compile. Changing depth stays a separate, named conversion.
+
+**"The better algorithm has fewer artifacts" is false in one dimension, and the
+example prints both.** Malvar-He-Cutler beats bilinear on mean absolute error by
+a wide margin. On a grey step, where every non-zero chroma is pure artifact, it
+also cuts the peak colour fringe. But it *widens* the fringed band, because its
+window is 5x5 and bilinear's is 3x3:
+
+```text
+grey step (no colour in the scene, so all chroma is artifact):
+  bilinear             peak fringe  85 levels, fringed band 2 columns wide
+  Malvar-He-Cutler     peak fringe  53 levels, fringed band 4 columns wide
+```
+
+Which of those costs more is the caller's call, which is why both ship and
+neither hides behind the other.
+
+The example also explains why `demosaic` takes no `BorderPolicy`: reflect-101 is
+the only policy in the crate that preserves CFA parity, so `Clamp` would read
+red where the kernel expects green. That is a wrong colour rather than a
+slightly wrong value, so the choice is not offered.
 
 ---
 

@@ -1,7 +1,7 @@
 [package]
 name        = "fovea-examples"
 description = "End-to-end example programs for the fovea computer-vision crates"
-version     = "0.3.0"
+version     = "0.4.0"
 edition     = "2024"
 rust-version = "1.85"
 license     = "MIT"
@@ -19,9 +19,9 @@ publish     = false
 # that redirects these to the in-tree paths. That patch never reaches
 # the public `fovea-examples` repo.
 [dependencies]
-fovea         = "0.3.0"
-fovea-io      = { version = "0.3.0", features = ["all-codecs"] }
-fovea-display = { version = "0.3.0", features = ["debug-window"] }
+fovea         = "0.4.0"
+fovea-io      = { version = "0.4.0", features = ["all-codecs"] }
+fovea-display = { version = "0.4.0", features = ["debug-window"] }
 clap          = { version = "4", features = ["derive"] }
 
 [[bin]]
@@ -51,6 +51,14 @@ path = "src/canny.rs"
 [[bin]]
 name = "adaptive_threshold"
 path = "src/adaptive_threshold.rs"
+
+[[bin]]
+name = "harris"
+path = "src/harris.rs"
+
+[[bin]]
+name = "fast"
+path = "src/fast.rs"
 
 [[bin]]
 name = "show_roi"
@@ -83,3 +91,15 @@ path = "src/show_histogram_consumers.rs"
 [[bin]]
 name = "tile_flip_rotate"
 path = "src/tile_flip_rotate.rs"
+
+[[bin]]
+name = "contours"
+path = "src/contours.rs"
+
+[[bin]]
+name = "pyramid"
+path = "src/pyramid.rs"
+
+[[bin]]
+name = "demosaic"
+path = "src/demosaic.rs"
