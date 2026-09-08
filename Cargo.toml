@@ -107,3 +107,7 @@ path = "src/demosaic.rs"
 [[bin]]
 name = "gamma_thumbnails"
 path = "src/gamma_thumbnails.rs"
+
+[[bin]]
+name = "channel_swap"
+path = "src/channel_swap.rs"
