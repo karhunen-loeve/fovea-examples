@@ -103,3 +103,7 @@ path = "src/pyramid.rs"
 [[bin]]
 name = "demosaic"
 path = "src/demosaic.rs"
+
+[[bin]]
+name = "gamma_thumbnails"
+path = "src/gamma_thumbnails.rs"
