@@ -487,12 +487,14 @@ not compile. Reproducing the classic bug takes an explicit function,
 silently redefines what they mean. The bug is still writable — it just cannot
 happen by accident, and it has a name and a line number when it does.
 
-On a backlit autumn photograph, three halving steps, the naive thumbnail comes
-out 3.4 % darker in mean linear luminance, with the worst single channel off by
-51 codes out of 255. The error compounds with each step: 2.5 % after two
-halvings, 3.4 % after three, 4.2 % after four. It is largest in fine
-high-contrast texture (bare branches against bright sky) and absent in flat
-areas, because a uniform region averages to itself in either space.
+How much it costs depends entirely on the motif. On a Milky Way panorama,
+four halving steps, the naive thumbnail comes out 20 % darker in mean linear
+luminance and most of the individual stars are simply gone: a lone bright pixel
+among fifteen dark ones averages to code 16 as bytes and to 71 in light. An
+ordinary backlit landscape under the same treatment loses about 3 % — real,
+measurable, and invisible to the eye. Flat areas lose nothing at all, because a
+uniform region averages to itself in either space. The error also compounds per
+step, so a pyramid pays it at every level.
 
 ---
 

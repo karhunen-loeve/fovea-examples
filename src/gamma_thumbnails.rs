@@ -16,7 +16,7 @@
 //! Note what the naive path costs in this library: `Srgb8` deliberately does
 //! not implement `LinearSpace`, so `resize(&srgb, size, Bilinear)` does not
 //! compile. To reproduce the classic bug the encoded bytes have to be copied
-//! into a linear pixel type on purpose — see `lie_about_encoding` below. The
+//! into a linear pixel type on purpose — see `DropTheEncoding` below. The
 //! bug is still writable, it just cannot happen by accident.
 //!
 //! ## Usage
@@ -31,9 +31,9 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use fovea::image::{Image, ImageView, ImageViewMut, SubView};
+use fovea::image::{Image, ImageView, SubView};
 use fovea::pixel::{Rgb8, RgbF32, Srgb8};
-use fovea::transform::{SrgbGamma, convert_image, pyr_down};
+use fovea::transform::{ConvertPixel, SrgbGamma, convert_image, pyr_down};
 use fovea::{Coordinate, Rectangle, Size};
 
 use fovea_io::png::{self, PngEncodeOptions, PngImage};
@@ -78,32 +78,28 @@ fn parse_crop(s: &str) -> Result<(usize, usize, usize, usize), String> {
 // The two paths
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Copies gamma-encoded bytes into a *linear* pixel type without decoding
-/// them. This is the bug, written out in full: the byte pattern is unchanged
-/// and its meaning is silently redefined. Every `cv2.resize` on an ordinary
-/// photo does exactly this, only without a function to point at.
-fn lie_about_encoding(src: &Image<Srgb8>) -> Image<Rgb8> {
-    let mut out = Image::<Rgb8>::zero(src.width(), src.height());
-    for y in 0..src.height() {
-        for x in 0..src.width() {
-            let p = src.pixel_at(x, y);
-            *out.pixel_at_mut(x, y) = Rgb8::new(p.r.0, p.g.0, p.b.0);
-        }
+/// The bug, as a named conversion strategy.
+///
+/// It copies the byte pattern through unchanged and redefines what it means:
+/// `Srgb8` in, `Rgb8` out, no transfer curve anywhere. That is precisely what
+/// happens when an ordinary photo is handed to `cv2.resize` — except there the
+/// reinterpretation has no name, no call site and no place to hang a comment.
+///
+/// Written as a `ConvertPixel` strategy it becomes a thing with a name that
+/// shows up in a diff, which is the whole argument of part 1 of the series
+/// turned against the bug from part 2.
+struct DropTheEncoding;
+
+impl ConvertPixel<Srgb8, Rgb8> for DropTheEncoding {
+    fn convert(&self, src: &Srgb8) -> Rgb8 {
+        Rgb8::new(src.r.0, src.g.0, src.b.0)
     }
-    out
 }
 
-/// The mirror image of `lie_about_encoding`, so the naive result can be
-/// written to a file that claims to be sRGB, exactly as the broken pipelines do.
-fn relabel_as_srgb(src: &Image<Rgb8>) -> Image<Srgb8> {
-    let mut out = Image::<Srgb8>::zero(src.width(), src.height());
-    for y in 0..src.height() {
-        for x in 0..src.width() {
-            let p = src.pixel_at(x, y);
-            *out.pixel_at_mut(x, y) = Srgb8::new(p.r.0, p.g.0, p.b.0);
-        }
+impl ConvertPixel<Rgb8, Srgb8> for DropTheEncoding {
+    fn convert(&self, src: &Rgb8) -> Srgb8 {
+        Srgb8::new(src.r.0, src.g.0, src.b.0)
     }
-    out
 }
 
 /// The naive path: pretend the encoded bytes are light, then halve `levels`
@@ -113,11 +109,11 @@ fn relabel_as_srgb(src: &Image<Rgb8>) -> Image<Srgb8> {
 /// would show almost nothing, because it samples four neighbours per output
 /// pixel and averages nothing.
 fn downscale_naive(src: &Image<Srgb8>, levels: u32) -> Image<Srgb8> {
-    let mut current = lie_about_encoding(src);
+    let mut current: Image<Rgb8> = convert_image(src, DropTheEncoding);
     for _ in 0..levels {
         current = pyr_down(&current);
     }
-    relabel_as_srgb(&current)
+    convert_image(&current, DropTheEncoding)
 }
 
 /// The same reduction, with the transfer curve respected: decode once,
@@ -201,14 +197,8 @@ fn main() {
                 .roi(rect)
                 .unwrap_or_else(|| fail("crop lies outside the image"));
             let (crop_w, crop_h) = (view.width(), view.height());
-            let mut owned = Image::<Srgb8>::zero(crop_w, crop_h);
-            for yy in 0..crop_h {
-                for xx in 0..crop_w {
-                    *owned.pixel_at_mut(xx, yy) = view.pixel_at(xx, yy);
-                }
-            }
             println!("crop:   {crop_w}x{crop_h} at ({x},{y})");
-            owned
+            Image::generate(crop_w, crop_h, |xx, yy| view.pixel_at(xx, yy))
         }
         None => source,
     };
