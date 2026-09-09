@@ -111,3 +111,7 @@ path = "src/gamma_thumbnails.rs"
 [[bin]]
 name = "channel_swap"
 path = "src/channel_swap.rs"
+
+[[bin]]
+name = "web_copy"
+path = "src/web_copy.rs"
