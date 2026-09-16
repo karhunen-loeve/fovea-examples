@@ -30,7 +30,9 @@ use fovea::features::detect::{
     CornerParams, NmsRadius, ShiTomasi, corner_response_map, detect_corners,
 };
 use fovea::features::{HasPosition, retain_top_n};
-use fovea::image::{Decimated, GaussianPyramid, Image, ImageView, OriginOffset, ScaledImage};
+use fovea::image::{
+    Decimated, GaussianPyramid, Image, ImageView, OriginOffset, Pyramid, ScaledImage,
+};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
 use fovea::transform::{Gaussian, PyramidMethod, SrgbGamma, convert_image, pyr_down, pyr_up};
 use fovea::{CoordinateF64, PixelDistance, Sigma, sigma};
