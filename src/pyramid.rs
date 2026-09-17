@@ -4,8 +4,9 @@
 //! the one thing a pyramid is actually for: finding something on a small,
 //! cheap level and saying where it is in the **full-resolution** frame.
 //!
-//! 1. `Gaussian.build` → a `GaussianPyramid<MonoF32>`. `max_depth` is an
-//!    upper bound, not a promise; the build stops when a level cannot shrink.
+//! 1. `Gaussian.build` → a `PlacedPyramid<MonoF32>`, whose levels carry the
+//!    sampling geometry the build computed. `max_depth` is an upper bound,
+//!    not a promise; the build stops when a level cannot shrink.
 //! 2. `pyr_down` and `pyr_up` by hand, to show the pyramid is a container
 //!    over two ordinary operations rather than a special kind of image.
 //! 3. The **reconstruction residual**: `pyr_up(pyr_down(img))` is not `img`,
@@ -30,12 +31,10 @@ use fovea::features::detect::{
     CornerParams, NmsRadius, ShiTomasi, corner_response_map, detect_corners,
 };
 use fovea::features::{HasPosition, retain_top_n};
-use fovea::image::{
-    Decimated, GaussianPyramid, Image, ImageView, OriginOffset, Pyramid, ScaledImage,
-};
+use fovea::image::{Decimated, Image, ImageView, PlacedPyramid, Pyramid};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
 use fovea::transform::{Gaussian, PyramidMethod, SrgbGamma, convert_image, pyr_down, pyr_up};
-use fovea::{CoordinateF64, PixelDistance, Sigma, sigma};
+use fovea::{CoordinateF64, sigma};
 use fovea_display::{DebugDisplay, Identity, LinearToDisplay};
 use fovea_io::jpeg::{self, JpegImage};
 
@@ -62,7 +61,7 @@ fn main() {
     // Ask for six levels. Whether six arrive is the image's business: the
     // build clamps rather than erroring, and `depth()` reports what happened.
     let requested = 6;
-    let pyramid: GaussianPyramid<MonoF32> = Gaussian.build(&base, requested);
+    let pyramid: PlacedPyramid<MonoF32> = Gaussian.build(&base, requested);
     println!(
         "\nrequested depth {requested}, resolved depth {}",
         pyramid.depth()
@@ -74,7 +73,7 @@ fn main() {
             size.width,
             size.height,
             size.width * size.height,
-            1u32 << i,
+            level.pixel_distance().get(),
         );
     }
     let total: usize = pyramid
@@ -116,21 +115,12 @@ fn main() {
     );
 
     // ── 4. Detect coarse, report fine ────────────────────────────────────────
-    // `Gaussian.build` produces plain `Image` levels, which carry no scale
-    // metadata and pay nothing for it. Lifting a position needs that
-    // metadata, so wrap the level in a `ScaledImage` and *state* the
-    // convention: `pyr_down` maps coarse pixel k to fine pixel 2k, so the
-    // origin offset is (0, 0) and the sampling distance is 2^level.
+    // Lifting a position needs the level's sampling geometry, and the level
+    // already carries it: `Gaussian.build` computed the distance and the
+    // origin offset on the way down and kept them. Nothing is restated here,
+    // so nothing can be restated wrongly.
     let level_index = 2;
-    let coarse = pyramid.level(level_index).clone();
-    let distance = PixelDistance::try_new(f64::from(1u32 << level_index))
-        .expect("a power of two is finite and positive");
-    let level = ScaledImage::new(
-        coarse,
-        distance,
-        OriginOffset::ZERO,
-        effective_sigma(level_index),
-    );
+    let level = pyramid.level(level_index);
 
     let window = sigma!(1.4);
     let map: Image<MonoF32> = corner_response_map(level.image(), ShiTomasi, window);
@@ -182,7 +172,7 @@ fn main() {
     let residual_image: Image<MonoF32> = Image::generate(base.width(), base.height(), |x, y| {
         MonoF32::new((base.pixel_at(x, y).0 - restored.pixel_at(x, y).0).abs())
     });
-    let levels: Vec<Image<MonoF32>> = pyramid.iter().cloned().collect();
+    let levels: Vec<Image<MonoF32>> = pyramid.iter().map(|l| l.image().clone()).collect();
 
     println!(
         "\nOpening {} windows — press any key to close all",
@@ -211,21 +201,6 @@ fn main() {
             None => println!("All windows closed"),
         }
     });
-}
-
-/// The σ a level has accumulated, in base-image pixels.
-///
-/// Each `pyr_down` applies the pinned binomial kernel, whose σ is about
-/// 1.0 in *its own* level's pixels; expressed in base pixels that doubles
-/// with every octave. This is an approximation and the demo says so: the
-/// exact accumulated σ of repeated binomial smoothing plus decimation is
-/// not a closed form, and `ScaleLevel` exists precisely so the number is
-/// stated by whoever built the level rather than guessed by whoever reads
-/// it.
-fn effective_sigma(level_index: usize) -> Sigma {
-    let base_sigma = 1.0_f32;
-    Sigma::try_new(base_sigma * (1u32 << level_index) as f32)
-        .expect("a positive scale of a positive sigma is positive")
 }
 
 /// Mean and maximum absolute difference between two same-size images.
@@ -263,7 +238,7 @@ fn report_lift_cost() {
         let inside = (40..88).contains(&x) && (40..88).contains(&y);
         MonoF32::new(if inside { 1.0 } else { 0.0 })
     });
-    let pyramid: GaussianPyramid<MonoF32> = Gaussian.build(&square, 4);
+    let pyramid: PlacedPyramid<MonoF32> = Gaussian.build(&square, 4);
     let window = sigma!(1.2);
 
     println!("\ncost of detecting coarse (true top-left corner at base 39.5, 39.5):");
@@ -286,14 +261,7 @@ fn report_lift_cost() {
             continue;
         };
 
-        let distance = PixelDistance::try_new(f64::from(1u32 << index)).expect("positive");
-        let level = ScaledImage::new(
-            image.clone(),
-            distance,
-            OriginOffset::ZERO,
-            effective_sigma(index),
-        );
-        let lifted = level.to_base(top_left.position());
+        let lifted = image.to_base(top_left.position());
         let error = ((lifted.x - 39.5).powi(2) + (lifted.y - 39.5).powi(2)).sqrt();
         println!(
             "  level {index} ({:>3}×{:<3}): local ({:.0}, {:.0}) → base ({:>5.1}, {:>5.1}), {error:.2} px from truth, quantisation floor {:.2} px",
@@ -303,7 +271,7 @@ fn report_lift_cost() {
             top_left.position().y,
             lifted.x,
             lifted.y,
-            0.5 * distance.get() * std::f64::consts::SQRT_2,
+            0.5 * image.pixel_distance().get() * std::f64::consts::SQRT_2,
         );
     }
 
