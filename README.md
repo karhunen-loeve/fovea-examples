@@ -21,6 +21,8 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | Trace contours, read hole hierarchy and shape descriptors | `cargo run --bin contours` |
 | Build an image pyramid and lift a coarse detection back | `cargo run --bin pyramid` |
 | Demosaic a Bayer mosaic and white-balance the raw data | `cargo run --bin demosaic` |
+| Measure what ignoring the sRGB curve costs a thumbnail | `cargo run --bin gamma_thumbnails -- -i photo.jpg -l 3` |
+| See what a mislabelled BGR buffer does to a face | `cargo run --bin channel_swap -- -i portrait.jpg` |
 | Inspect display strategies | `cargo run --bin show_srgb` and `cargo run --bin show_linear` |
 | See ROI display | `cargo run --bin show_roi` |
 
@@ -47,6 +49,8 @@ cargo build --release  # all examples, optimised
 | `contours`      | Border tracing (`analyze::contours`), outer/hole hierarchy, Euler number, convex hull, Douglas-Peucker, and the staircase bias in circularity |
 | `pyramid`       | Gaussian pyramid (`image::pyramid` + `transform::pyramid`), the `pyr_up`/`pyr_down` residual, and lifting a coarse detection into base coordinates |
 | `demosaic`      | Bayer CFA types (`pixel::bayer`), `demosaic` with two strategies, `white_balance` on the mosaic, and the artifact trade-off measured both ways |
+| `gamma_thumbnails` | One photo reduced twice, in encoded bytes and in linear light, with the difference measured — the naive path has to be written on purpose, because `Srgb8` is not `LinearSpace` |
+| `channel_swap`  | One photo written twice, as it is and as BGR-believing code displays it; the bug is a relabelling (`ConvertPixel<Srgb8, SrgbBgr8>`) followed by an honest `ColorSwap` |
 | `perona_malik`  | Perona-Malik anisotropic diffusion filter CLI — PNG, JPEG, BMP       |
 | `show_srgb`     | Load a JPEG and display it with `Identity` strategy |
 | `show_mono16`   | Synthetic Mono16 gradient displayed with `AutoContrast` |
@@ -459,6 +463,66 @@ The example also explains why `demosaic` takes no `BorderPolicy`: reflect-101 is
 the only policy in the crate that preserves CFA parity, so `Clamp` would read
 red where the kernel expects green. That is a wrong colour rather than a
 slightly wrong value, so the choice is not offered.
+
+---
+
+## `channel_swap`
+
+Writes one photo twice: as the file really is, and as code that believes the
+buffer is BGR puts it on screen.
+
+```sh
+cargo run --release --bin channel_swap -- --input portrait.jpg --out-dir out
+```
+
+No colour is invented anywhere, which is the point. The second image comes from
+*relabelling* the pixels and then converting them honestly. `Srgb8` is laid out
+`r, g, b` and `SrgbBgr8` is laid out `b, g, r`, so filling B's blue slot from
+A's red channel leaves memory untouched and changes only the claim being made
+about it. Displaying that claim needs `ColorSwap`, which does move bytes, and
+the face turns blue.
+
+That is the whole anatomy of the bug: two correct operations and one
+disagreement about what the bytes mean. In fovea the disagreement has to be
+written down as a strategy with a name, `MislabelAsBgr`, which is a line a
+reviewer can see. Handed a bare `(H, W, 3)` array, it is not a line at all.
+
+The reduction to the target width runs in linear light, so a demonstration
+about channel order does not accidentally demonstrate the gamma bug as well.
+
+---
+
+## `gamma_thumbnails`
+
+Takes one photo, reduces it twice, and measures the difference. Both paths use
+the same crop, the same number of halving steps and the same kernel; the only
+thing that differs is whether the sRGB transfer curve was decoded before the
+averaging.
+
+```sh
+cargo run --release --bin gamma_thumbnails --     --input photo.jpg --out-dir out --levels 3 --crop 160,105,2490,1640
+```
+
+Interpolation and blurring are weighted averages, and averaging only means
+something on values proportional to light. Stored sRGB bytes are not: code 128
+carries about 22 % of the light of code 255. Averaging them anyway pulls every
+mixed pixel toward black.
+
+The point of the example is what it costs to write the wrong version. `Srgb8`
+does not implement `LinearSpace`, so `pyr_down` on gamma-encoded pixels does
+not compile. Reproducing the classic bug takes an explicit function,
+`lie_about_encoding`, that copies the bytes into a linear pixel type and
+silently redefines what they mean. The bug is still writable — it just cannot
+happen by accident, and it has a name and a line number when it does.
+
+How much it costs depends entirely on the motif. On a Milky Way panorama,
+four halving steps, the naive thumbnail comes out 20 % darker in mean linear
+luminance and most of the individual stars are simply gone: a lone bright pixel
+among fifteen dark ones averages to code 16 as bytes and to 71 in light. An
+ordinary backlit landscape under the same treatment loses about 3 % — real,
+measurable, and invisible to the eye. Flat areas lose nothing at all, because a
+uniform region averages to itself in either space. The error also compounds per
+step, so a pyramid pays it at every level.
 
 ---
 
