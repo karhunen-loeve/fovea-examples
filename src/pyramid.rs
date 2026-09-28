@@ -297,7 +297,7 @@ fn overlay_positions(base: &Image<SrgbMono8>, positions: &[CoordinateF64]) -> Im
     });
     for p in positions {
         Crosshair {
-            center: (p.x.round() as i32, p.y.round() as i32).into(),
+            center: (p.x.round() as isize, p.y.round() as isize).into(),
             arm_length: 6,
             color: Srgb8::new(255, 60, 60),
         }
