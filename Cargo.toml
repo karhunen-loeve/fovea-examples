@@ -93,6 +93,10 @@ name = "tile_flip_rotate"
 path = "src/tile_flip_rotate.rs"
 
 [[bin]]
+name = "measure_label"
+path = "src/measure_label.rs"
+
+[[bin]]
 name = "contours"
 path = "src/contours.rs"
 

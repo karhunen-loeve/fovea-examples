@@ -20,6 +20,7 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | Find corners with the FAST segment test | `cargo run --bin fast` |
 | Trace contours, read hole hierarchy and shape descriptors | `cargo run --bin contours` |
 | Build an image pyramid and lift a coarse detection back | `cargo run --bin pyramid` |
+| Measure a width and a diameter, and write the numbers beside them | `cargo run --bin measure_label` |
 | Demosaic a Bayer mosaic and white-balance the raw data | `cargo run --bin demosaic` |
 | Measure what ignoring the sRGB curve costs a thumbnail | `cargo run --bin gamma_thumbnails -- -i photo.jpg -l 3` |
 | See what a mislabelled BGR buffer does to a face | `cargo run --bin channel_swap -- -i portrait.jpg` |
@@ -47,6 +48,7 @@ cargo build --release  # all examples, optimised
 | `harris`        | Harris and Shi-Tomasi corner detection (`features::detect`), calibrated thresholds, and the localization drift |
 | `fast`          | FAST segment-test corner detection (`features::detect::fast`), the arc-length sweep, the border policy as a choice, and a timed comparison against Shi-Tomasi |
 | `contours`      | Border tracing (`analyze::contours`), outer/hole hierarchy, Euler number, convex hull, Douglas-Peucker, and the staircase bias in circularity |
+| `measure_label` | A caliper across a bar and a circle fitted to radial caliper edges (`fovea::measure`), and an inspection record with every number written beside its geometry in a bitmap font (`draw::draw_text`, `BitmapFont::text_size`); `--save` writes the record as PNG |
 | `pyramid`       | Gaussian pyramid (`image::pyramid` + `transform::pyramid`), the `pyr_up`/`pyr_down` residual, and lifting a coarse detection into base coordinates |
 | `demosaic`      | Bayer CFA types (`pixel::bayer`), `demosaic` with two strategies, `white_balance` on the mosaic, and the artifact trade-off measured both ways |
 | `gamma_thumbnails` | One photo reduced twice, in encoded bytes and in linear light, with the difference measured — the naive path has to be written on purpose, because `Srgb8` is not `LinearSpace` |
