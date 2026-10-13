@@ -34,7 +34,7 @@ use fovea::features::{HasPosition, retain_top_n};
 use fovea::image::{Decimated, Image, ImageView, PlacedPyramid, Pyramid};
 use fovea::pixel::{MonoF32, Srgb8, SrgbMono8};
 use fovea::transform::{Gaussian, PyramidMethod, SrgbGamma, convert_image, pyr_down, pyr_up};
-use fovea::{CoordinateF64, sigma};
+use fovea::{Pixels, Point, sigma};
 use fovea_display::{DebugDisplay, Identity, LinearToDisplay};
 use fovea_io::jpeg::{self, JpegImage};
 
@@ -136,7 +136,7 @@ fn main() {
         corners.len(),
     );
 
-    let lifted: Vec<CoordinateF64> = corners
+    let lifted: Vec<Point<Pixels>> = corners
         .iter()
         .map(|c| level.to_base(c.position()))
         .collect();
@@ -288,7 +288,7 @@ fn report_lift_cost() {
 ///
 /// Uses `fovea::draw::Crosshair`, so this is the crate's drawing API rather
 /// than example scaffolding.
-fn overlay_positions(base: &Image<SrgbMono8>, positions: &[CoordinateF64]) -> Image<Srgb8> {
+fn overlay_positions(base: &Image<SrgbMono8>, positions: &[Point<Pixels>]) -> Image<Srgb8> {
     use fovea::draw::{Crosshair, Drawable};
 
     let mut out: Image<Srgb8> = Image::generate(base.width(), base.height(), |x, y| {

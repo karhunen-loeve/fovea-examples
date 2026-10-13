@@ -79,7 +79,7 @@ fn main() {
     // component that encloses it, and enclosure is a labeling question.
     // 8-connectivity for the foreground implies 4-connectivity for the
     // background, which is what makes the two consistent.
-    let (labeling, hierarchy) = extract_contours::<Label32, Connectivity8>(&scene)
+    let (labeling, hierarchy) = extract_contours::<Label32, Connectivity8, _>(&scene)
         .expect("the scene is a valid bool image");
     println!(
         "components: {} (labeling reports {})",
@@ -287,7 +287,7 @@ fn terrace_contours() -> (Image<Srgb8>, usize) {
     let binary: Image<bool> = Image::generate(mono.width(), mono.height(), |x, y| {
         mono.pixel_at(x, y).0.0 > 128
     });
-    let (_, hierarchy) = extract_contours::<Label32, Connectivity8>(&binary)
+    let (_, hierarchy) = extract_contours::<Label32, Connectivity8, _>(&binary)
         .expect("the thresholded image is a valid bool image");
 
     // Keep only components big enough to see, so the overlay stays readable.

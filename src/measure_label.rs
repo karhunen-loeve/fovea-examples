@@ -96,7 +96,7 @@ fn main() -> Result<(), fovea::Error> {
             .edges(Polarity::LightToDark, sigma!(1.0), min_contrast!(50.0))
             .strongest()
             .expect("every radial caliper crosses the border of the disc once");
-        points.push(edge.position);
+        points.push(edge.position());
     }
     let fit = try_fit(&points, Taubin, AllPoints)?;
     let circle = fit.element();
@@ -129,7 +129,7 @@ fn main() -> Result<(), fovea::Error> {
     // The caliper across the bar, and the two edges it found.
     draw_line(&mut record, (20, 70), (90, 70), yellow);
     for edge in [bar.first, bar.second] {
-        draw_crosshair(&mut record, rounded(edge.position), 4, cyan);
+        draw_crosshair(&mut record, rounded(edge.position()), 4, cyan);
     }
     // The width, centred above the bar.
     let label = format!(
