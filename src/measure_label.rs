@@ -1,4 +1,4 @@
-//! # measure_label — measure a bar and a disc, and write the numbers beside them
+//! # measure_label: measure a bar and a disc, and write the numbers beside them
 //!
 //! Demonstrates the measurement tools of `fovea::measure` and the text of
 //! `fovea::draw` on a synthetic scene whose answers are known:
@@ -200,10 +200,10 @@ fn main() -> Result<(), fovea::Error> {
         println!("\nwrote {}", path.display());
         return Ok(());
     }
-    println!("\nOpening 1 window — press any key to close");
+    println!("\nOpening 1 window, press any key to close");
     DebugDisplay::run(move |ctx| {
         ctx.show(
-            "measure_label — caliper (yellow), edges (cyan), fitted circle (green)",
+            "measure_label: caliper (yellow), edges (cyan), fitted circle (green)",
             &record,
             Identity,
         );
