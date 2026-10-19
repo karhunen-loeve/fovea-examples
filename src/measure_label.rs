@@ -32,7 +32,7 @@ use fovea::border::Skip;
 use fovea::draw::{FONT_6X13, FONT_10X20, draw_circle, draw_crosshair, draw_line, draw_text};
 use fovea::geometry::{ConformalMap, UniformScale};
 use fovea::image::{Image, ImageView};
-use fovea::measure::{AllPoints, Caliper, Neighbors, Polarity, Taubin, profile, try_fit};
+use fovea::measure::{AllPoints, Caliper, Neighbors, Polarity, Taubin, fit, profile};
 use fovea::pixel::{MonoF32, Srgb8};
 use fovea::transform::CatmullRom;
 use fovea::{Length, Millimeter, Pixels, Point, min_contrast, sigma, uniform_scale};
@@ -98,9 +98,9 @@ fn main() -> Result<(), fovea::Error> {
             .expect("every radial caliper crosses the border of the disc once");
         points.push(edge.position());
     }
-    let fit = try_fit(&points, Taubin, AllPoints)?;
-    let circle = fit.element();
-    let in_mm = fit.map(&scale);
+    let disc = fit(&points, Taubin, AllPoints)?;
+    let circle = disc.element();
+    let in_mm = disc.map(&scale);
     println!(
         "disc: centre ({:.4}, {:.4}), diameter {:.4} px = {:.5} mm, RMS residual {:.4} px \
          (built at ({:.1}, {:.1}), diameter {:.1} px)",
@@ -108,7 +108,7 @@ fn main() -> Result<(), fovea::Error> {
         circle.center().y,
         2.0 * circle.radius().get(),
         2.0 * in_mm.element().radius().get(),
-        fit.rms_residual().get(),
+        disc.rms_residual().get(),
         DISC.0,
         DISC.1,
         2.0 * DISC.2,
@@ -167,7 +167,7 @@ fn main() -> Result<(), fovea::Error> {
         "Ø {:.2} px\n= {:.4} mm\nRMS {:.3} px",
         2.0 * circle.radius().get(),
         2.0 * in_mm.element().radius().get(),
-        fit.rms_residual().get(),
+        disc.rms_residual().get(),
     );
     let size = FONT_6X13.text_size(&label, 1);
     let right = circle.center().x + circle.radius().get() + 8.0;
