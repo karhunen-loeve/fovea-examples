@@ -97,6 +97,22 @@ name = "measure_label"
 path = "src/measure_label.rs"
 
 [[bin]]
+name = "lens_measure"
+path = "src/lens_measure.rs"
+
+[[bin]]
+name = "periodic_noise"
+path = "src/periodic_noise.rs"
+
+[[bin]]
+name = "phase_drift"
+path = "src/phase_drift.rs"
+
+[[bin]]
+name = "fft_convolve"
+path = "src/fft_convolve.rs"
+
+[[bin]]
 name = "contours"
 path = "src/contours.rs"
 

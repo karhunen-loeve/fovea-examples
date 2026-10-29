@@ -21,6 +21,10 @@ If the crate docs show the building blocks, these examples show the whole pipeli
 | Trace contours, read hole hierarchy and shape descriptors | `cargo run --bin contours` |
 | Build an image pyramid and lift a coarse detection back | `cargo run --bin pyramid` |
 | Measure a width and a diameter, and write the numbers beside them | `cargo run --bin measure_label` |
+| Measure an angle and a corner through a distorting lens, in millimetres | `cargo run --bin lens_measure` |
+| Find periodic interference in the spectrum and notch it out | `cargo run --release --bin periodic_noise` |
+| Measure sub-pixel drift between frames with phase correlation | `cargo run --release --bin phase_drift` |
+| Time a large blur directly and through the FFT | `cargo run --release --bin fft_convolve` |
 | Demosaic a Bayer mosaic and white-balance the raw data | `cargo run --bin demosaic` |
 | Measure what ignoring the sRGB curve costs a thumbnail | `cargo run --bin gamma_thumbnails -- -i photo.jpg -l 3` |
 | See what a mislabelled BGR buffer does to a face | `cargo run --bin channel_swap -- -i portrait.jpg` |
@@ -49,6 +53,10 @@ cargo build --release  # all examples, optimised
 | `fast`          | FAST segment-test corner detection (`features::detect::fast`), the arc-length sweep, the border policy as a choice, and a timed comparison against Shi-Tomasi |
 | `contours`      | Border tracing (`analyze::contours`), outer/hole hierarchy, Euler number, convex hull, Douglas-Peucker, and the staircase bias in circularity |
 | `measure_label` | A caliper across a bar and a circle fitted to radial caliper edges (`fovea::measure`), and an inspection record with every number written beside its geometry in a bitmap font (`draw::draw_text`, `BitmapFont::text_size`); `--save` writes the record as PNG |
+| `lens_measure` | Edges seen through a Brown-Conrady lens (`geometry::BrownConrady::from_opencv`): line fits in the camera image, then on corrected points (`undistort_point`) and on a remapped `IdealPixels` image; the angle between the edges as an `Angle`, the corner by `Line::intersection`, a chip rejected by a Tukey fit, all in millimetres through a `Similarity`; `--save` writes the record as PNG |
+| `periodic_noise` | Two stripe patterns added to a photo, found as peaks in the spectrum (`frequency::dft`, `Spectrum::magnitude`, `LogMagnitude` display), refined to a fraction of a bin and removed with `Spectrum::notch`; the error before and after, and what the notches cost the photo |
+| `phase_drift` | A drifting, vibrating frame sequence with changing gain and noise, located against one reference by `frequency::PhaseReference`; built and measured shift per frame, and the track as a plot |
+| `fft_convolve` | Disc-shaped defocus kernels up to 61 × 61, convolved by `transform::convolve` and by `frequency::convolve`; time, speed-up and the largest difference per kernel |
 | `pyramid`       | Gaussian pyramid (`image::pyramid` + `transform::pyramid`), the `pyr_up`/`pyr_down` residual, and lifting a coarse detection into base coordinates |
 | `demosaic`      | Bayer CFA types (`pixel::bayer`), `demosaic` with two strategies, `white_balance` on the mosaic, and the artifact trade-off measured both ways |
 | `gamma_thumbnails` | One photo reduced twice, in encoded bytes and in linear light, with the difference measured — the naive path has to be written on purpose, because `Srgb8` is not `LinearSpace` |

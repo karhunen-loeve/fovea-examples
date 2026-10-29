@@ -30,12 +30,12 @@ use clap::Parser;
 
 use fovea::border::Skip;
 use fovea::draw::{FONT_6X13, FONT_10X20, draw_circle, draw_crosshair, draw_line, draw_text};
-use fovea::geometry::{ConformalMap, UniformScale};
+use fovea::geometry::{ConformalMap, UniformScale, Vector};
 use fovea::image::{Image, ImageView};
 use fovea::measure::{AllPoints, Caliper, Neighbors, Polarity, Taubin, fit, profile};
 use fovea::pixel::{MonoF32, Srgb8};
 use fovea::transform::CatmullRom;
-use fovea::{Length, Millimeter, Pixels, Point, min_contrast, sigma, uniform_scale};
+use fovea::{Angle, Length, Millimeter, Pixels, Point, min_contrast, sigma, uniform_scale};
 use fovea_display::{DebugDisplay, Identity};
 use fovea_io::png::{self, PngEncodeOptions};
 
@@ -84,11 +84,11 @@ fn main() -> Result<(), fovea::Error> {
     let rough = Point::<Pixels>::new(160.0, 70.0);
     let mut points = Vec::new();
     for k in 0..16 {
-        let angle = TAU * k as f64 / 16.0;
-        let (dx, dy) = (angle.cos(), angle.sin());
+        let angle = Angle::from_radians(TAU * k as f64 / 16.0)?;
+        let outward = Vector::from_polar(Length::new(1.0), angle);
         let caliper = Caliper::try_segment(
-            Point::new(rough.x + 15.0 * dx, rough.y + 15.0 * dy),
-            Point::new(rough.x + 45.0 * dx, rough.y + 45.0 * dy),
+            rough + outward * 15.0,
+            rough + outward * 45.0,
             Length::new(3.0),
             Length::new(0.25),
         )?;
