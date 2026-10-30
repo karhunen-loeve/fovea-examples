@@ -81,7 +81,8 @@ fn downscale(src: &Image<Srgb8>, width: usize) -> Image<Srgb8> {
         light = pyr_down(&light);
     }
     let height = (width as f64 * light.height() as f64 / light.width() as f64).round() as usize;
-    let exact: Image<RgbF32> = resize(&light, Size::new(width, height.max(1)), Bilinear);
+    let exact: Image<RgbF32> = resize(&light, Size::new(width, height.max(1)), Bilinear)
+        .expect("a decoded image has pixels");
     convert_image(&exact, SrgbGamma)
 }
 

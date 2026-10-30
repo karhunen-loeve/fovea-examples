@@ -394,7 +394,8 @@ fn encode_bmp_srgba8(img: &Image<Srgba8>) -> Result<Vec<u8>, fovea_io::IoError> 
 macro_rules! resize_linear {
     ($img:expr, $target:expr, $fmt:expr, $desc:expr, $pixel_ty:ty) => {{
         $desc.check_format_compat($fmt)?;
-        let resized: Image<$pixel_ty> = resize($img, $target, Bilinear);
+        let resized: Image<$pixel_ty> =
+            resize($img, $target, Bilinear).map_err(|e| e.to_string())?;
         encode_result(&resized, $fmt, $desc)
     }};
 }
@@ -404,7 +405,8 @@ macro_rules! resize_srgb {
     ($img:expr, $target:expr, $fmt:expr, $desc:expr, $linear_ty:ty, $srgb_ty:ty) => {{
         $desc.check_format_compat($fmt)?;
         let linear: Image<$linear_ty> = convert_image($img, SrgbGamma);
-        let resized: Image<$linear_ty> = resize(&linear, $target, Bilinear);
+        let resized: Image<$linear_ty> =
+            resize(&linear, $target, Bilinear).map_err(|e| e.to_string())?;
         let result: Image<$srgb_ty> = convert_image(&resized, SrgbGamma);
         encode_result(&result, $fmt, $desc)
     }};
@@ -642,7 +644,8 @@ fn resize_png_image(image: &PngImage, target: Size, fmt: OutputFormat) -> Result
             let desc = DESC_SRGB_MONO8;
             desc.check_format_compat(fmt)?;
             let linear: Image<MonoF32> = convert_image(img, SrgbGamma);
-            let resized: Image<MonoF32> = resize(&linear, target, Bilinear);
+            let resized: Image<MonoF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<SrgbMono8> = convert_image(&resized, SrgbGamma);
             encode_srgb_mono8(&result, fmt, desc)
         }
@@ -653,7 +656,8 @@ fn resize_png_image(image: &PngImage, target: Size, fmt: OutputFormat) -> Result
             let desc = DESC_SRGB8;
             desc.check_format_compat(fmt)?;
             let linear: Image<RgbF32> = convert_image(img, SrgbGamma);
-            let resized: Image<RgbF32> = resize(&linear, target, Bilinear);
+            let resized: Image<RgbF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<Srgb8> = convert_image(&resized, SrgbGamma);
             encode_srgb8(&result, fmt)
         }
@@ -661,7 +665,8 @@ fn resize_png_image(image: &PngImage, target: Size, fmt: OutputFormat) -> Result
             let desc = DESC_SRGBA8;
             desc.check_format_compat(fmt)?;
             let linear: Image<RgbaF32> = convert_image(img, SrgbGamma);
-            let resized: Image<RgbaF32> = resize(&linear, target, Bilinear);
+            let resized: Image<RgbaF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<Srgba8> = convert_image(&resized, SrgbGamma);
             encode_srgba8(&result, fmt, desc)
         }
@@ -690,7 +695,8 @@ fn resize_png_image(image: &PngImage, target: Size, fmt: OutputFormat) -> Result
         PngImage::Indexed8 { data, palette } => {
             let desc = DESC_INDEXED8;
             desc.check_format_compat(fmt)?;
-            let resized: Image<Indexed8> = resize(data, target, NearestNeighbor);
+            let resized: Image<Indexed8> =
+                resize(data, target, NearestNeighbor).map_err(|e| e.to_string())?;
             encode_indexed(&resized, palette, fmt, desc)
         }
     }
@@ -706,7 +712,8 @@ fn resize_jpeg_image(
             let desc = DESC_SRGB8;
             desc.check_format_compat(fmt)?;
             let linear: Image<RgbF32> = convert_image(img, SrgbGamma);
-            let resized: Image<RgbF32> = resize(&linear, target, Bilinear);
+            let resized: Image<RgbF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<Srgb8> = convert_image(&resized, SrgbGamma);
             encode_srgb8(&result, fmt)
         }
@@ -714,7 +721,8 @@ fn resize_jpeg_image(
             let desc = DESC_SRGB_MONO8;
             desc.check_format_compat(fmt)?;
             let linear: Image<MonoF32> = convert_image(img, SrgbGamma);
-            let resized: Image<MonoF32> = resize(&linear, target, Bilinear);
+            let resized: Image<MonoF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<SrgbMono8> = convert_image(&resized, SrgbGamma);
             encode_srgb_mono8(&result, fmt, desc)
         }
@@ -724,7 +732,8 @@ fn resize_jpeg_image(
             let desc = DESC_SRGB_MONO16;
             desc.check_format_compat(fmt)?;
             let linear: Image<MonoF32> = convert_image(img, SrgbGamma);
-            let resized: Image<MonoF32> = resize(&linear, target, Bilinear);
+            let resized: Image<MonoF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<SrgbMono16> = convert_image(&resized, SrgbGamma);
             encode_result(&result, fmt, desc)
         }
@@ -741,7 +750,8 @@ fn resize_bmp_image(
             let desc = DESC_SRGB8;
             desc.check_format_compat(fmt)?;
             let linear: Image<RgbF32> = convert_image(img, SrgbGamma);
-            let resized: Image<RgbF32> = resize(&linear, target, Bilinear);
+            let resized: Image<RgbF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<Srgb8> = convert_image(&resized, SrgbGamma);
             encode_srgb8(&result, fmt)
         }
@@ -749,14 +759,16 @@ fn resize_bmp_image(
             let desc = DESC_SRGBA8;
             desc.check_format_compat(fmt)?;
             let linear: Image<RgbaF32> = convert_image(img, SrgbGamma);
-            let resized: Image<RgbaF32> = resize(&linear, target, Bilinear);
+            let resized: Image<RgbaF32> =
+                resize(&linear, target, Bilinear).map_err(|e| e.to_string())?;
             let result: Image<Srgba8> = convert_image(&resized, SrgbGamma);
             encode_srgba8(&result, fmt, desc)
         }
         bmp::BmpImage::Indexed8 { data, palette } => {
             let desc = DESC_INDEXED8;
             desc.check_format_compat(fmt)?;
-            let resized: Image<Indexed8> = resize(data, target, NearestNeighbor);
+            let resized: Image<Indexed8> =
+                resize(data, target, NearestNeighbor).map_err(|e| e.to_string())?;
             encode_indexed(&resized, palette, fmt, desc)
         }
     }

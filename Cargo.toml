@@ -1,7 +1,7 @@
 [package]
 name        = "fovea-examples"
 description = "End-to-end example programs for the fovea computer-vision crates"
-version     = "0.5.1"
+version     = "0.6.0"
 edition     = "2024"
 rust-version = "1.85"
 license     = "MIT"
@@ -19,9 +19,9 @@ publish     = false
 # that redirects these to the in-tree paths. That patch never reaches
 # the public `fovea-examples` repo.
 [dependencies]
-fovea         = "0.5.1"
-fovea-io      = { version = "0.5.1", features = ["all-codecs"] }
-fovea-display = { version = "0.5.1", features = ["debug-window"] }
+fovea         = "0.6.0"
+fovea-io      = { version = "0.6.0", features = ["all-codecs"] }
+fovea-display = { version = "0.6.0", features = ["debug-window"] }
 clap          = { version = "4", features = ["derive"] }
 
 [[bin]]
@@ -91,6 +91,26 @@ path = "src/show_histogram_consumers.rs"
 [[bin]]
 name = "tile_flip_rotate"
 path = "src/tile_flip_rotate.rs"
+
+[[bin]]
+name = "measure_label"
+path = "src/measure_label.rs"
+
+[[bin]]
+name = "lens_measure"
+path = "src/lens_measure.rs"
+
+[[bin]]
+name = "periodic_noise"
+path = "src/periodic_noise.rs"
+
+[[bin]]
+name = "phase_drift"
+path = "src/phase_drift.rs"
+
+[[bin]]
+name = "fft_convolve"
+path = "src/fft_convolve.rs"
 
 [[bin]]
 name = "contours"

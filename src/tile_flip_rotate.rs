@@ -62,7 +62,7 @@ impl TileOp {
     fn apply<I, O>(self, src: &I, dst: &mut O)
     where
         I: fovea::image::RasterImage<Pixel = SrgbMono8>,
-        O: fovea::image::RasterImageMut<Pixel = SrgbMono8>,
+        O: fovea::image::RasterImageMut<Pixel = SrgbMono8, Space = I::Space>,
     {
         match self {
             // Identity: a plain row-by-row copy keeps the path free of any
