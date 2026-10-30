@@ -100,7 +100,9 @@ fn main() -> Result<(), fovea::Error> {
     }
     let disc = fit(&points, Taubin, AllPoints)?;
     let circle = disc.element();
-    let in_mm = disc.map(&scale);
+    let in_mm = disc
+        .map(&scale)
+        .expect("12.5 um per pixel keeps the circle finite");
     println!(
         "disc: centre ({:.4}, {:.4}), diameter {:.4} px = {:.5} mm, RMS residual {:.4} px \
          (built at ({:.1}, {:.1}), diameter {:.1} px)",

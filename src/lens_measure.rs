@@ -171,7 +171,8 @@ fn main() -> Result<(), fovea::Error> {
     // ── 5. In millimetres ────────────────────────────────────────────────────
     // The calibration is a similarity, so a fitted line converts as a whole,
     // residuals included, and the angle between two lines is kept.
-    let (mm_a, mm_b) = (fit_a.map(&cal), fit_b.map(&cal));
+    let keep = "0.05 mm per pixel keeps the line finite";
+    let (mm_a, mm_b) = (fit_a.map(&cal).expect(keep), fit_b.map(&cal).expect(keep));
     let angle = mm_a.element().angle_to(mm_b.element());
     let corner_mm = meet(mm_a.element(), mm_b.element());
     println!(
